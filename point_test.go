@@ -8,7 +8,7 @@ import (
 	"github.com/ameteiko/golang-kit/test/assert"
 )
 
-func TestPoint_Add(t *testing.T) {
+func TestPoint_Add_Neg(t *testing.T) {
 
 	p1 := MakePoint()
 	p2 := MakePoint()

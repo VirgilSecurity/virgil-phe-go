@@ -22,3 +22,9 @@ func (p *Point) Add(a *Point) *Point {
 func (p *Point) Neg() {
 	p.Y = new(big.Int).Sub(Pn, p.Y)
 }
+
+func (p *Point) ScalarMult(b []byte) *Point {
+	x, y := c.ScalarMult(p.X, p.Y, b)
+
+	return &Point{x, y}
+}
