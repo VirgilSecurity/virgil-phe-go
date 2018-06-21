@@ -1,7 +1,10 @@
 package phe
 
 import (
+	"crypto/elliptic"
 	"crypto/rand"
+	"fmt"
+	"math/big"
 
 	"github.com/Scratch-net/SWU"
 )
@@ -10,7 +13,7 @@ type Server struct {
 	PrivateKey []byte
 }
 
-func (l *Server) Encrypt(password []byte, c0, c1 *Point) (ns []byte, m, t1, t2 *Point) {
+func (l *Server) Encrypt(password []byte, c0, c1 *Point) (ns []byte, m, t0, t1 *Point) {
 	ns = make([]byte, 32)
 	rand.Read(ns)
 
@@ -24,10 +27,49 @@ func (l *Server) Encrypt(password []byte, c0, c1 *Point) (ns []byte, m, t1, t2 *
 	hs0 = hs0.ScalarMult(l.PrivateKey)
 	hs1 = hs1.ScalarMult(l.PrivateKey)
 	mEnc := m.ScalarMult(l.PrivateKey)
+	fmt.Println("mEnc", mEnc)
 
-	t1 = c0.Add(hs0)
-	t2 = c1.Add(hs1).Add(mEnc)
+	t0 = c0.Add(hs0)
+	t1 = c1.Add(hs1).Add(mEnc)
 	return
+}
+
+func (l *Server) DecryptStart(nonce, password []byte, t0, t1 *Point) (c0, t1x *Point) {
+	hs0, hs1 := l.Eval(nonce, password)
+	hs0 = hs0.ScalarMult(l.PrivateKey)
+	hs0.Neg()
+	c0 = t0.Add(hs0)
+
+	hs1 = hs1.ScalarMult(l.PrivateKey)
+	hs1.Neg()
+	t1x = t1.Add(hs1)
+
+	return
+}
+
+func (l *Server) DecryptEnd(t1, c1 *Point) (m *Point) {
+	c1.Neg()
+	mEnc := t1.Add(c1)
+	fmt.Println("mEnc", mEnc)
+	m = mEnc.ScalarMult(l.inverseSk())
+	return
+}
+
+func (l *Server) inverseSk() []byte {
+
+	sk := new(big.Int).SetBytes(l.PrivateKey)
+	skInv := fermatInverse(sk, elliptic.P256().Params().N)
+	return skInv.Bytes()
+}
+
+// fermatInverse calculates the inverse of k in GF(P) using Fermat's method.
+// This has better constant-time properties than Euclid's method (implemented
+// in math/big.Int.ModInverse) although math/big itself isn't strictly
+// constant-time so it's not perfect.
+func fermatInverse(k, N *big.Int) *big.Int {
+	two := big.NewInt(2)
+	nMinus2 := new(big.Int).Sub(N, two)
+	return new(big.Int).Exp(k, nMinus2, N)
 }
 
 func (l *Server) Eval(nonce []byte, password []byte) (hs0, hs1 *Point) {

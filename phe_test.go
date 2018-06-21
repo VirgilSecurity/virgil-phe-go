@@ -3,8 +3,9 @@ package phe
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	"fmt"
 	"testing"
+
+	"github.com/ameteiko/golang-kit/test/assert"
 )
 
 func Test_PHE(t *testing.T) {
@@ -17,8 +18,15 @@ func Test_PHE(t *testing.T) {
 
 	nr, c0, c1 := l.Encrypt()
 
-	ns, m, t1, t2 := s.Encrypt([]byte("Password"), c0, c1)
+	ns, m, t0, t1 := s.Encrypt([]byte("Password"), c0, c1)
 
-	fmt.Println(nr, ns, m, t1, t2)
+	c0x, t1x := s.DecryptStart(ns, []byte("Password"), t0, t1)
+	c0y, c1y := l.Decrypt(nr)
+
+	assert.Equal(t, c0x, c0y)
+
+	mDec := s.DecryptEnd(t1x, c1y)
+
+	assert.Equal(t, m, mDec)
 
 }
