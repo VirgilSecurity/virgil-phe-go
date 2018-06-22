@@ -3,7 +3,6 @@ package phe
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	"fmt"
 	"math/big"
 
 	"github.com/Scratch-net/SWU"
@@ -11,6 +10,7 @@ import (
 
 type Server struct {
 	PrivateKey []byte
+	invKey     []byte
 }
 
 func (l *Server) Encrypt(password []byte, c0, c1 *Point) (ns []byte, m, t0, t1 *Point) {
@@ -27,7 +27,6 @@ func (l *Server) Encrypt(password []byte, c0, c1 *Point) (ns []byte, m, t0, t1 *
 	hs0 = hs0.ScalarMult(l.PrivateKey)
 	hs1 = hs1.ScalarMult(l.PrivateKey)
 	mEnc := m.ScalarMult(l.PrivateKey)
-	fmt.Println("mEnc", mEnc)
 
 	t0 = c0.Add(hs0)
 	t1 = c1.Add(hs1).Add(mEnc)
@@ -50,16 +49,18 @@ func (l *Server) DecryptStart(nonce, password []byte, t0, t1 *Point) (c0, t1x *P
 func (l *Server) DecryptEnd(t1, c1 *Point) (m *Point) {
 	c1.Neg()
 	mEnc := t1.Add(c1)
-	fmt.Println("mEnc", mEnc)
 	m = mEnc.ScalarMult(l.inverseSk())
 	return
 }
 
 func (l *Server) inverseSk() []byte {
 
-	sk := new(big.Int).SetBytes(l.PrivateKey)
-	skInv := fermatInverse(sk, elliptic.P256().Params().N)
-	return skInv.Bytes()
+	if l.invKey == nil {
+		sk := new(big.Int).SetBytes(l.PrivateKey)
+		skInv := fermatInverse(sk, elliptic.P256().Params().N)
+		l.invKey = skInv.Bytes()
+	}
+	return l.invKey
 }
 
 // fermatInverse calculates the inverse of k in GF(P) using Fermat's method.
