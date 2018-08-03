@@ -3,4 +3,4 @@ Authors: Russell W. F. Lai, Christoph Egger, Manuel Reinert, Sherman S. M. Chow,
 
 Doc: https://www.chaac.tf.fau.de/files/2018/06/main.pdf
 
-Go implementation by Alexey Ermishkin VirgilSecurty.com
+Go implementation by Alexey Ermishkin (VirgilSecurty.com)[https://virgilsecurity.com]
