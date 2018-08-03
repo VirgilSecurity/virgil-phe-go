@@ -28,3 +28,13 @@ func (p *Point) ScalarMult(b []byte) *Point {
 
 	return &Point{x, y}
 }
+
+func (p *Point) ScalarBaseMult(b []byte) *Point {
+	x, y := c.ScalarBaseMult(b)
+
+	return &Point{x, y}
+}
+
+func (p *Point) Marshal() []byte {
+	return elliptic.Marshal(c, p.X, p.Y)
+}

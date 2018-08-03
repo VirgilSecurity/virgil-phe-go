@@ -32,6 +32,7 @@ func BenchmarkAddP256(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		p256.Add(x, y, x1, y1)
 	}
+
 }
 
 func Test_PHE(t *testing.T) {
