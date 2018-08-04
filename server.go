@@ -2,7 +2,6 @@ package phe
 
 import (
 	"crypto/elliptic"
-	"crypto/rand"
 	"errors"
 	"math/big"
 
@@ -16,10 +15,10 @@ type Server struct {
 
 func (s *Server) Enrollment(password, ns []byte, c0, c1 *Point, proof *Proof) (nc []byte, m, t0, t1 *Point, err error) {
 	nc = make([]byte, 32)
-	rand.Read(nc)
+	//rand.Read(nc)
 
 	mBuf := make([]byte, 32)
-	rand.Read(mBuf)
+	//rand.Read(mBuf)
 	m = GroupHash(mBuf, 0)
 
 	hc0 := GroupHash(append(nc, password...), 0)
@@ -147,4 +146,19 @@ func (s *Server) inverseSk() []byte {
 		s.invKey = skInv.Bytes()
 	}
 	return s.invKey
+}
+
+func (s *Server) Rotate(a *big.Int) {
+	y := new(big.Int).SetBytes(s.Y)
+	f := swu.GF{P: curve.Params().N}
+	s.Y = f.Mul(y, a).Bytes()
+}
+
+func (s *Server) Update(t0, t1 *Point, ns []byte, a, b *big.Int) (t00, t11 *Point) {
+	hs0 := GroupHash(ns, 0)
+	hs1 := GroupHash(ns, 1)
+
+	t00 = t0.ScalarMult(a.Bytes()).Add(hs0.ScalarMult(b.Bytes()))
+	t11 = t1.ScalarMult(a.Bytes()).Add(hs1.ScalarMult(b.Bytes()))
+	return
 }

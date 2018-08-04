@@ -15,6 +15,13 @@ var (
 	curve = elliptic.P256()
 )
 
+type Proof struct {
+	Term1, Term2, Term3, Term4, I *Point
+	PublicKey                     *Point
+	Res                           *big.Int
+	Res1, Res2                    *big.Int
+}
+
 func RandomZ() (z []byte) {
 	priv := make([]byte, 32)
 

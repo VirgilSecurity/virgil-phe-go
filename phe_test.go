@@ -3,6 +3,7 @@ package phe
 import (
 	"crypto/elliptic"
 	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,7 +53,21 @@ func Test_PHE(t *testing.T) {
 	mDec, err := s.Validate(t0, t1, []byte("Password"), ns, nc, c1, proof, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
+
 	assert.True(t, m.Equal(mDec))
+
+	//rotation
+	a, b := l.Rotate()
+	s.Rotate(a)
+	t0, t1 = s.Update(t0, t1, ns, a, b)
+
+	fmt.Println(t0, t1)
+
+	ns, c0, c1, proof = l.SampleRandomValues()
+	nc, m, t0, t1, err = s.Enrollment([]byte("Password"), ns, c0, c1, proof)
+
+	fmt.Println(t0, t1)
+
 }
 
 func Test_PHE_InvalidPassword(t *testing.T) {
