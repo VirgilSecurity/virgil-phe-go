@@ -10,20 +10,20 @@ import (
 )
 
 type Server struct {
-	PrivateKey []byte
-	invKey     []byte
+	Y      []byte
+	invKey []byte
 }
 
-func (s *Server) Encrypt(password, ns []byte, c0, c1 *Point, proof *Proof) (nc []byte, m, t0, t1 *Point, err error) {
+func (s *Server) Enrollment(password, ns []byte, c0, c1 *Point, proof *Proof) (nc []byte, m, t0, t1 *Point, err error) {
 	nc = make([]byte, 32)
 	rand.Read(nc)
 
 	mBuf := make([]byte, 32)
 	rand.Read(mBuf)
-	mx, my := swu.HashToPoint(mBuf)
-	m = &Point{mx, my}
+	m = GroupHash(mBuf, 0)
 
-	hc0, hc1 := s.Eval(nc, password)
+	hc0 := GroupHash(append(nc, password...), 0)
+	hc1 := GroupHash(append(nc, password...), 1)
 
 	proofValid := s.ValidateProof(proof, ns, c0, c1)
 	if !proofValid {
@@ -31,26 +31,15 @@ func (s *Server) Encrypt(password, ns []byte, c0, c1 *Point, proof *Proof) (nc [
 		return
 	}
 
-	hc0 = hc0.ScalarMult(s.PrivateKey)
-	hc1 = hc1.ScalarMult(s.PrivateKey)
-	mEnc := m.ScalarMult(s.PrivateKey)
-
-	t0 = c0.Add(hc0)
-	t1 = c1.Add(hc1).Add(mEnc)
+	t0 = c0.Add(hc0.ScalarMult(s.Y))
+	t1 = c1.Add(hc1.ScalarMult(s.Y)).Add(m.ScalarMult(s.Y))
 	return
 }
 
 func (s *Server) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 
-	ns := make([]byte, 33)
-	copy(ns[:32], nonce)
-
-	x, y := swu.HashToPoint(ns)
-	hs0 := &Point{x, y}
-
-	ns[32] = 1
-	x, y = swu.HashToPoint(ns)
-	hs1 := &Point{x, y}
+	hs0 := GroupHash(nonce, 0)
+	hs1 := GroupHash(nonce, 1)
 
 	buf := append(proof.Term1.Marshal(), proof.Term2.Marshal()...)
 	buf = append(buf, proof.Term3.Marshal()...)
@@ -90,49 +79,72 @@ func (s *Server) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 	return true
 }
 
-func (s *Server) DecryptStart(nonce, password []byte, t0, t1 *Point) (c0, t1x *Point) {
-	hs0, hs1 := s.Eval(nonce, password)
-	hs0 = hs0.ScalarMult(s.PrivateKey)
-	hs0.Neg()
-	c0 = t0.Add(hs0)
-
-	hs1 = hs1.ScalarMult(s.PrivateKey)
-	hs1.Neg()
-	t1x = t1.Add(hs1)
-
+func (s *Server) ValidationRequest(nc, password []byte, t0 *Point) (c0 *Point) {
+	hc0 := GroupHash(append(nc, password...), 0)
+	y := new(big.Int).SetBytes(s.Y)
+	f := swu.GF{P: curve.Params().N}
+	minusY := f.Neg(y)
+	c0 = t0.Add(hc0.ScalarMult(minusY.Bytes()))
 	return
 }
 
-func (s *Server) DecryptEnd(t1, c1 *Point) (m *Point) {
-	c1.Neg()
-	mEnc := t1.Add(c1)
-	m = mEnc.ScalarMult(s.inverseSk())
-	return
+func (s *Server) Validate(t0, t1 *Point, password, ns, nc []byte, c1 *Point, proof *Proof, result bool) (m *Point, err error) {
+	hc0 := GroupHash(append(nc, password...), 0)
+	hc1 := GroupHash(append(nc, password...), 1)
+
+	hs0 := GroupHash(ns, 0)
+
+	//c0 = t0 * (hc0 ** (-self.y))
+
+	y := new(big.Int).SetBytes(s.Y)
+	f := swu.GF{P: curve.Params().N}
+	minusY := f.Neg(y)
+
+	c0 := t0.Add(hc0.ScalarMult(minusY.Bytes()))
+
+	if result && s.ValidateProof(proof, ns, c0, c1) {
+		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
+
+		m = (t1.Add(c1.Neg()).Add(hc1.ScalarMult(minusY.Bytes()))).ScalarMult(s.inverseSk())
+		return
+
+	} else {
+		buf := append(proof.Term1.Marshal(), proof.Term2.Marshal()...)
+		buf = append(buf, proof.Term3.Marshal()...)
+		buf = append(buf, proof.Term4.Marshal()...)
+
+		challenge := HashZ(buf)
+		//					if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
+		//                    return False
+		//
+		//                if term3 * term4 * (I ** challenge) != (self.X ** blind_a) * (self.G ** blind_b):
+		//                    return False
+
+		t1 := proof.Term1.Add(proof.Term2).Add(c1.ScalarMult(challenge))
+		t2 := c0.ScalarMult(proof.Res1.Bytes()).Add(hs0.ScalarMult(proof.Res2.Bytes()))
+
+		if !t1.Equal(t2) {
+			return nil, errors.New("verification failed")
+		}
+
+		t1 = proof.Term3.Add(proof.Term4).Add(proof.I.ScalarMult(challenge))
+		t2 = proof.PublicKey.ScalarMult(proof.Res1.Bytes()).Add(new(Point).ScalarBaseMult(proof.Res2.Bytes()))
+
+		if !t1.Equal(t2) {
+			return nil, errors.New("verification failed")
+		}
+
+	}
+
+	return nil, nil
 }
 
 func (s *Server) inverseSk() []byte {
 
 	if s.invKey == nil {
-		sk := new(big.Int).SetBytes(s.PrivateKey)
+		sk := new(big.Int).SetBytes(s.Y)
 		skInv := new(big.Int).ModInverse(sk, elliptic.P256().Params().N)
 		s.invKey = skInv.Bytes()
 	}
 	return s.invKey
-}
-
-func (s *Server) Eval(nonce []byte, password []byte) (hs0, hs1 *Point) {
-	ns := make([]byte, len(password)+33)
-	copy(ns[:len(password)], password)
-	copy(ns[len(password):], nonce)
-
-	x, y := swu.HashToPoint(ns)
-	hs0 = &Point{x, y}
-
-	ns[len(password)+32] = 1
-	x, y = swu.HashToPoint(ns)
-	hs1 = &Point{x, y}
-
-	hs0 = hs0.ScalarMult(s.PrivateKey)
-	hs1 = hs1.ScalarMult(s.PrivateKey)
-	return
 }

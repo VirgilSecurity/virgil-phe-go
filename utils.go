@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/Scratch-net/SWU"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -46,4 +47,10 @@ func HashZ(data []byte) (z []byte) {
 		}
 	}
 	return
+}
+
+func GroupHash(data []byte, extraByte byte) *Point {
+
+	x, y := swu.HashToPoint(append(data, extraByte))
+	return &Point{x, y}
 }

@@ -17,8 +17,8 @@ func TestPoint_Add_Neg(t *testing.T) {
 	p12 := p1.Add(p2)
 	p123 := p12.Add(p3)
 
-	p1.Neg()
-	p2.Neg()
+	p1 = p1.Neg()
+	p2 = p2.Neg()
 
 	p123 = p123.Add(p1)
 	p123 = p123.Add(p2)

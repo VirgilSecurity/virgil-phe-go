@@ -18,7 +18,7 @@ func init() {
 	skS, _, _, _ := elliptic.GenerateKey(elliptic.P256(), rand.Reader)
 
 	l = &RateLimiter{skR}
-	s = &Server{PrivateKey: skS}
+	s = &Server{Y: skS}
 }
 
 func BenchmarkAddP256(b *testing.B) {
@@ -37,23 +37,45 @@ func BenchmarkAddP256(b *testing.B) {
 
 func Test_PHE(t *testing.T) {
 
+	//first, ask server for random values & proof
 	ns, c0, c1, proof := l.SampleRandomValues()
 
-	nc, m, t0, t1, err := s.Encrypt([]byte("Password"), ns, c0, c1, proof)
+	// Enroll account
+	nc, m, t0, t1, err := s.Enrollment([]byte("Password"), ns, c0, c1, proof)
 	assert.NoError(t, err)
 
-	c0x, t1x := s.DecryptStart(nc, []byte("Password"), t0, t1)
-	c0y, c1y, proof := l.Decrypt(ns)
-
-	assert.Equal(t, c0x, c0y)
-
-	mDec := s.DecryptEnd(t1x, c1y)
-
-	assert.Equal(t, m, mDec)
-
+	//Check password request
+	c0 = s.ValidationRequest(nc, []byte("Password"), t0)
+	//Check password response
+	res, c1, proof := l.Validate(ns, c0)
+	//validate response & decrypt M
+	mDec, err := s.Validate(t0, t1, []byte("Password"), ns, nc, c1, proof, res)
+	assert.NoError(t, err)
+	// decrypted m must be the same as original
+	assert.True(t, m.Equal(mDec))
 }
 
-func BenchmarkRateLimiter_Encrypt(b *testing.B) {
+func Test_PHE_InvalidPassword(t *testing.T) {
+
+	//first, ask server for random values & proof
+	ns, c0, c1, proof := l.SampleRandomValues()
+
+	// Enroll account
+	nc, _, t0, t1, err := s.Enrollment([]byte("Password"), ns, c0, c1, proof)
+	assert.NoError(t, err)
+
+	//Check password request
+	c0 = s.ValidationRequest(nc, []byte("Password1"), t0)
+	//Check password response
+	res, c1, proof := l.Validate(ns, c0)
+	//validate response & decrypt M
+	mDec, err := s.Validate(t0, t1, []byte("Password1"), ns, nc, c1, proof, res)
+	assert.Nil(t, err)
+	// decrypted m must be the same as original
+	assert.Nil(t, mDec)
+}
+
+/*func BenchmarkRateLimiter_Encrypt(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		l.SampleRandomValues()
 	}
@@ -65,7 +87,7 @@ func BenchmarkRateLimiter_Decrypt(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		l.Decrypt(nr)
+		l.Validate(nr)
 	}
 }
 
@@ -75,7 +97,7 @@ func BenchmarkServer_Encrypt(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		s.Encrypt([]byte("Password"), nil, c0, c1, nil)
+		s.Enrollment([]byte("Password"), nil, c0, c1, nil)
 	}
 }
 
@@ -83,11 +105,11 @@ func BenchmarkServer_DecryptStart(b *testing.B) {
 
 	_, c0, c1, _ := l.SampleRandomValues()
 
-	ns, _, t0, t1, _ := s.Encrypt([]byte("Password"), nil, c0, c1, nil)
+	ns, _, t0, t1, _ := s.Enrollment([]byte("Password"), nil, c0, c1, nil)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		s.DecryptStart(ns, []byte("Password"), t0, t1)
+		s.ValidationRequest(ns, []byte("Password"), t0, t1)
 	}
 }
 
@@ -95,12 +117,12 @@ func BenchmarkServer_DecryptEnd(b *testing.B) {
 
 	nr, c0, c1, _ := l.SampleRandomValues()
 
-	ns, _, t0, t1, _ := s.Encrypt([]byte("Password"), nil, c0, c1, nil)
+	ns, _, t0, t1, _ := s.Enrollment([]byte("Password"), nil, c0, c1, nil)
 
-	_, t1x := s.DecryptStart(ns, []byte("Password"), t0, t1)
-	_, c1y, _ := l.Decrypt(nr)
+	_, t1x := s.ValidationRequest(ns, []byte("Password"), t0, t1)
+	_, c1y, _ := l.Validate(nr)
 
 	for i := 0; i < b.N; i++ {
-		s.DecryptEnd(t1x, c1y)
+		s.Validate(t1x, c1y)
 	}
-}
+}*/
