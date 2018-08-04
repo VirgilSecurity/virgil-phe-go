@@ -9,13 +9,13 @@ import (
 )
 
 var (
-	l *RateLimiter
-	s *Server
+	l *Server
+	s *Client
 )
 
 func init() {
-	l = &RateLimiter{RandomZ()}
-	s = &Server{Y: RandomZ()}
+	l = &Server{RandomZ()}
+	s = &Client{Y: RandomZ()}
 }
 
 func BenchmarkAddP256(b *testing.B) {
@@ -38,15 +38,15 @@ func Test_PHE(t *testing.T) {
 	ns, c0, c1, proof := l.SampleRandomValues()
 
 	// Enroll account
-	nc, m, t0, t1, err := s.Enrollment([]byte("Password"), ns, c0, c1, proof)
+	nc, m, t0, t1, err := s.EnrollAccount([]byte("Password"), ns, c0, c1, proof)
 	assert.NoError(t, err)
 
 	//Check password request
-	c0 = s.ValidationRequest(nc, []byte("Password"), t0)
+	c0 = s.CreateVerifyPasswordRequest(nc, []byte("Password"), t0)
 	//Check password response
-	res, c1, proof := l.Validate(ns, c0)
+	res, c1, proof := l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
-	mDec, err := s.Validate(t0, t1, []byte("Password"), ns, nc, c1, proof, res)
+	mDec, err := s.CheckResponse(t0, t1, []byte("Password"), ns, nc, c1, proof, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.True(t, m.Equal(mDec))
@@ -57,11 +57,11 @@ func Test_PHE(t *testing.T) {
 	t0, t1 = s.Update(t0, t1, ns, a, b)
 
 	//Check password request
-	c0 = s.ValidationRequest(nc, []byte("Password"), t0)
+	c0 = s.CreateVerifyPasswordRequest(nc, []byte("Password"), t0)
 	//Check password response
-	res, c1, proof = l.Validate(ns, c0)
+	res, c1, proof = l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
-	mDec, err = s.Validate(t0, t1, []byte("Password"), ns, nc, c1, proof, res)
+	mDec, err = s.CheckResponse(t0, t1, []byte("Password"), ns, nc, c1, proof, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.True(t, m.Equal(mDec))
@@ -74,15 +74,15 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 	ns, c0, c1, proof := l.SampleRandomValues()
 
 	// Enroll account
-	nc, _, t0, t1, err := s.Enrollment([]byte("Password"), ns, c0, c1, proof)
+	nc, _, t0, t1, err := s.EnrollAccount([]byte("Password"), ns, c0, c1, proof)
 	assert.NoError(t, err)
 
 	//Check password request
-	c0 = s.ValidationRequest(nc, []byte("Password1"), t0)
+	c0 = s.CreateVerifyPasswordRequest(nc, []byte("Password1"), t0)
 	//Check password response
-	res, c1, proof := l.Validate(ns, c0)
+	res, c1, proof := l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
-	mDec, err := s.Validate(t0, t1, []byte("Password1"), ns, nc, c1, proof, res)
+	mDec, err := s.CheckResponse(t0, t1, []byte("Password1"), ns, nc, c1, proof, res)
 	assert.Nil(t, err)
 	// decrypted m must be the same as original
 	assert.Nil(t, mDec)
@@ -100,7 +100,7 @@ func BenchmarkRateLimiter_Decrypt(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		l.Validate(nr)
+		l.VerifyPassword(nr)
 	}
 }
 
@@ -110,7 +110,7 @@ func BenchmarkServer_Encrypt(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		s.Enrollment([]byte("Password"), nil, c0, c1, nil)
+		s.EnrollAccount([]byte("Password"), nil, c0, c1, nil)
 	}
 }
 
@@ -118,11 +118,11 @@ func BenchmarkServer_DecryptStart(b *testing.B) {
 
 	_, c0, c1, _ := l.SampleRandomValues()
 
-	ns, _, t0, t1, _ := s.Enrollment([]byte("Password"), nil, c0, c1, nil)
+	ns, _, t0, t1, _ := s.EnrollAccount([]byte("Password"), nil, c0, c1, nil)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		s.ValidationRequest(ns, []byte("Password"), t0, t1)
+		s.CreateVerifyPasswordRequest(ns, []byte("Password"), t0, t1)
 	}
 }
 
@@ -130,12 +130,12 @@ func BenchmarkServer_DecryptEnd(b *testing.B) {
 
 	nr, c0, c1, _ := l.SampleRandomValues()
 
-	ns, _, t0, t1, _ := s.Enrollment([]byte("Password"), nil, c0, c1, nil)
+	ns, _, t0, t1, _ := s.EnrollAccount([]byte("Password"), nil, c0, c1, nil)
 
-	_, t1x := s.ValidationRequest(ns, []byte("Password"), t0, t1)
-	_, c1y, _ := l.Validate(nr)
+	_, t1x := s.CreateVerifyPasswordRequest(ns, []byte("Password"), t0, t1)
+	_, c1y, _ := l.VerifyPassword(nr)
 
 	for i := 0; i < b.N; i++ {
-		s.Validate(t1x, c1y)
+		s.VerifyPassword(t1x, c1y)
 	}
 }*/
