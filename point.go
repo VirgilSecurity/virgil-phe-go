@@ -38,3 +38,8 @@ func (p *Point) ScalarBaseMult(b []byte) *Point {
 func (p *Point) Marshal() []byte {
 	return elliptic.Marshal(c, p.X, p.Y)
 }
+
+func (p *Point) Equal(other *Point) bool {
+	return p.X.Cmp(other.X) == 0 &&
+		p.Y.Cmp(other.Y) == 0
+}
