@@ -2,18 +2,19 @@ package phe
 
 import (
 	"crypto/elliptic"
+	"crypto/rand"
 	"math/big"
 
 	"github.com/Scratch-net/SWU"
 )
 
 type RateLimiter struct {
-	X []byte
+	X *big.Int
 }
 
 func (l *RateLimiter) SampleRandomValues() (ns []byte, c0, c1 *Point, proof *Proof) {
 	ns = make([]byte, 32)
-	//rand.Read(ns)
+	rand.Read(ns)
 	hs0, hs1, c0, c1 := l.Eval(ns)
 	proof = l.Prove(hs0, hs1)
 	return
@@ -31,20 +32,19 @@ func (l *RateLimiter) Validate(ns []byte, c0 *Point) (res bool, c1 *Point, proof
 		return
 	} else {
 
-		r := new(big.Int).SetBytes(RandomZ())
-		x := new(big.Int).SetBytes(l.X)
+		r := RandomZ()
 		f := &swu.GF{P: curve.Params().N}
 		minusR := f.Neg(r)
 
-		minusRX := f.Mul(minusR, x)
+		minusRX := f.Mul(minusR, l.X)
 
-		c1 = c0.ScalarMult(r.Bytes()).Add(hs0.ScalarMult(minusRX.Bytes()))
+		c1 = c0.ScalarMult(r).Add(hs0.ScalarMult(minusRX))
 
 		a := r
 		b := minusRX
 
-		blindA := new(big.Int).SetBytes(RandomZ())
-		blindB := new(big.Int).SetBytes(RandomZ())
+		blindA := RandomZ()
+		blindB := RandomZ()
 
 		X := new(Point).ScalarBaseMult(l.X)
 
@@ -54,27 +54,26 @@ func (l *RateLimiter) Validate(ns []byte, c0 *Point) (res bool, c1 *Point, proof
 		//                term3 = self.X ** blind_a
 		//                term4 = self.G ** blind_b
 
-		I := X.ScalarMult(a.Bytes()).Add(new(Point).ScalarBaseMult(b.Bytes()))
+		I := X.ScalarMult(a).Add(new(Point).ScalarBaseMult(b))
 
-		term1 := c0.ScalarMult(blindA.Bytes())
-		term2 := hs0.ScalarMult(blindB.Bytes())
-		term3 := X.ScalarMult(blindA.Bytes())
-		term4 := new(Point).ScalarBaseMult(blindB.Bytes())
+		term1 := c0.ScalarMult(blindA)
+		term2 := hs0.ScalarMult(blindB)
+		term3 := X.ScalarMult(blindA)
+		term4 := new(Point).ScalarBaseMult(blindB)
 
 		buf := append(term1.Marshal(), term2.Marshal()...)
 		buf = append(buf, term3.Marshal()...)
 		buf = append(buf, term4.Marshal()...)
 
 		challenge := HashZ(buf)
-		chlng := new(big.Int).SetBytes(challenge)
 
 		proof = &Proof{
 			Term1:     term1,
 			Term2:     term2,
 			Term3:     term3,
 			Term4:     term4,
-			Res1:      f.Add(blindA, f.Mul(chlng, a)),
-			Res2:      f.Add(blindB, f.Mul(chlng, b)),
+			Res1:      f.Add(blindA, f.Mul(challenge, a)),
+			Res2:      f.Add(blindB, f.Mul(challenge, b)),
 			I:         I,
 			PublicKey: new(Point).ScalarBaseMult(l.X),
 		}
@@ -107,11 +106,7 @@ func (l *RateLimiter) Prove(hs0, hs1 *Point) *Proof {
 
 	gf := &swu.GF{P: elliptic.P256().Params().N}
 
-	x := new(big.Int).SetBytes(l.X)
-	chlng := new(big.Int).SetBytes(challenge)
-	blind := new(big.Int).SetBytes(blindX)
-
-	res := gf.Add(blind, gf.Mul(chlng, x))
+	res := gf.Add(blindX, gf.Mul(challenge, l.X))
 
 	return &Proof{
 		Term1:     term1,
@@ -126,11 +121,11 @@ func (l *RateLimiter) Prove(hs0, hs1 *Point) *Proof {
 func (l *RateLimiter) Rotate() (a, b *big.Int) {
 	f := swu.GF{P: curve.Params().N}
 
-	a, b = new(big.Int).SetBytes(RandomZ()), new(big.Int).SetBytes(RandomZ())
+	a, b = RandomZ(), RandomZ()
 
-	x := new(big.Int).SetBytes(l.X)
+	x := l.X
 	xa := f.Mul(x, a)
-	l.X = f.Add(xa, b).Bytes()
+	l.X = f.Add(xa, b)
 
 	return
 }

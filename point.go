@@ -26,14 +26,14 @@ func (p *Point) Neg() *Point {
 	return t
 }
 
-func (p *Point) ScalarMult(b []byte) *Point {
-	x, y := c.ScalarMult(p.X, p.Y, b)
+func (p *Point) ScalarMult(b *big.Int) *Point {
+	x, y := c.ScalarMult(p.X, p.Y, b.Bytes())
 
 	return &Point{x, y}
 }
 
-func (p *Point) ScalarBaseMult(b []byte) *Point {
-	x, y := c.ScalarBaseMult(b)
+func (p *Point) ScalarBaseMult(b *big.Int) *Point {
+	x, y := c.ScalarBaseMult(b.Bytes())
 
 	return &Point{x, y}
 }

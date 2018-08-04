@@ -22,24 +22,25 @@ type Proof struct {
 	Res1, Res2                    *big.Int
 }
 
-func RandomZ() (z []byte) {
+func RandomZ() (z *big.Int) {
 	priv := make([]byte, 32)
 
 	for z == nil {
 		io.ReadFull(rand.Reader, priv)
+
 		// If the scalar is out of range, sample another random number.
 
 		if new(big.Int).SetBytes(priv).Cmp(curve.Params().N) >= 0 {
 			panic(priv)
 
 		} else {
-			z = priv
+			z = new(big.Int).SetBytes(priv)
 		}
 	}
 	return
 }
 
-func HashZ(data []byte) (z []byte) {
+func HashZ(data []byte) (z *big.Int) {
 
 	kdf := hkdf.New(sha256.New, data, data, []byte("HashZ"))
 	h := make([]byte, 32)
@@ -50,7 +51,7 @@ func HashZ(data []byte) (z []byte) {
 		if new(big.Int).SetBytes(h).Cmp(curve.Params().N) >= 0 {
 			kdf.Read(h)
 		} else {
-			z = h
+			z = new(big.Int).SetBytes(h)
 		}
 	}
 	return
