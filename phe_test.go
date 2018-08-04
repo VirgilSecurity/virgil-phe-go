@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	l *Server
-	s *Client
+	l   *Server
+	s   *Client
+	pwd = []byte("Password")
 )
 
 func init() {
@@ -38,15 +39,16 @@ func Test_PHE(t *testing.T) {
 	ns, c0, c1, proof := l.SampleRandomValues()
 
 	// Enroll account
-	nc, m, t0, t1, err := s.EnrollAccount([]byte("Password"), ns, c0, c1, proof)
+
+	nc, m, t0, t1, err := s.EnrollAccount(pwd, ns, c0, c1, proof)
 	assert.NoError(t, err)
 
 	//Check password request
-	c0 = s.CreateVerifyPasswordRequest(nc, []byte("Password"), t0)
-	//Check password response
+	c0 = s.CreateVerifyPasswordRequest(nc, pwd, t0)
+	//Check password on server
 	res, c1, proof := l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
-	mDec, err := s.CheckResponse(t0, t1, []byte("Password"), ns, nc, c1, proof, res)
+	mDec, err := s.CheckResponse(t0, t1, pwd, ns, nc, c1, proof, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.True(t, m.Equal(mDec))
@@ -57,11 +59,11 @@ func Test_PHE(t *testing.T) {
 	t0, t1 = s.Update(t0, t1, ns, a, b)
 
 	//Check password request
-	c0 = s.CreateVerifyPasswordRequest(nc, []byte("Password"), t0)
-	//Check password response
+	c0 = s.CreateVerifyPasswordRequest(nc, pwd, t0)
+	//Check password on server
 	res, c1, proof = l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
-	mDec, err = s.CheckResponse(t0, t1, []byte("Password"), ns, nc, c1, proof, res)
+	mDec, err = s.CheckResponse(t0, t1, pwd, ns, nc, c1, proof, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.True(t, m.Equal(mDec))
@@ -74,17 +76,17 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 	ns, c0, c1, proof := l.SampleRandomValues()
 
 	// Enroll account
-	nc, _, t0, t1, err := s.EnrollAccount([]byte("Password"), ns, c0, c1, proof)
+	nc, _, t0, t1, err := s.EnrollAccount(pwd, ns, c0, c1, proof)
 	assert.NoError(t, err)
 
 	//Check password request
 	c0 = s.CreateVerifyPasswordRequest(nc, []byte("Password1"), t0)
-	//Check password response
+	//Check password on server
 	res, c1, proof := l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
 	mDec, err := s.CheckResponse(t0, t1, []byte("Password1"), ns, nc, c1, proof, res)
 	assert.Nil(t, err)
-	// decrypted m must be the same as original
+	// decrypted m must be nil
 	assert.Nil(t, mDec)
 }
 
