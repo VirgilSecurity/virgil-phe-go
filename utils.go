@@ -14,8 +14,15 @@ var (
 	curveG = new(Point).ScalarBaseMult(new(big.Int).SetUint64(1))
 	gf     = swu.GF{P: curve.Params().N}
 	maxZ   = new(big.Int).SetBit(new(big.Int), 256, 1)
-	zero   = []byte{0}
-	one    = []byte{1}
+
+	//domains
+	dhc0       = []byte("hc0")
+	dhc1       = []byte("hc1")
+	dhs0       = []byte("hs0")
+	dhs1       = []byte("hs1")
+	dm         = []byte("m")
+	proofOk    = []byte("ProofOk")
+	proofError = []byte("ProofError")
 )
 
 type Proof struct {
@@ -42,7 +49,10 @@ func RandomZ() (z *big.Int) {
 }
 
 func HashZ(data ...[]byte) (z *big.Int) {
-	xof := sha3.TupleHashXOF256(data, []byte("HashZ"))
+	if len(data) < 2 {
+		panic(data)
+	}
+	xof := sha3.TupleHashXOF256(data[:len(data)-1], data[len(data)-1])
 	rz, _ := rand.Int(xof, maxZ)
 
 	for z == nil {
@@ -57,8 +67,13 @@ func HashZ(data ...[]byte) (z *big.Int) {
 }
 
 func HashToPoint(data ...[]byte) *Point {
+
+	if len(data) < 2 {
+		panic(data)
+	}
+
 	hash := make([]byte, 32)
-	sha3.TupleHash256(data, []byte("HashToPoint"), hash)
+	sha3.TupleHash256(data[:len(data)-1], data[len(data)-1], hash)
 	x, y := swu.HashToPoint(hash)
 	return &Point{x, y}
 }

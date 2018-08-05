@@ -16,10 +16,10 @@ func (c *Client) EnrollAccount(password, ns []byte, c0, c1 *Point, proof *Proof)
 
 	mBuf := make([]byte, 32)
 	rand.Read(mBuf)
-	m = HashToPoint(mBuf)
+	m = HashToPoint(mBuf, dm)
 
-	hc0 := HashToPoint(nc, password, zero)
-	hc1 := HashToPoint(nc, password, one)
+	hc0 := HashToPoint(nc, password, dhc0)
+	hc1 := HashToPoint(nc, password, dhc1)
 
 	proofValid := c.ValidateProof(proof, ns, c0, c1)
 	if !proofValid {
@@ -34,10 +34,10 @@ func (c *Client) EnrollAccount(password, ns []byte, c0, c1 *Point, proof *Proof)
 
 func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 
-	hs0 := HashToPoint(nonce, zero)
-	hs1 := HashToPoint(nonce, one)
+	hs0 := HashToPoint(nonce, dhs0)
+	hs1 := HashToPoint(nonce, dhs1)
 
-	challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal())
+	challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proofOk)
 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
 	// return False
@@ -73,17 +73,17 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 }
 
 func (c *Client) CreateVerifyPasswordRequest(nc, password []byte, t0 *Point) (c0 *Point) {
-	hc0 := HashToPoint(nc, password, zero)
+	hc0 := HashToPoint(nc, password, dhc0)
 	minusY := gf.Neg(c.Y)
 	c0 = t0.Add(hc0.ScalarMult(minusY))
 	return
 }
 
 func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte, c1 *Point, proof *Proof, result bool) (m *Point, err error) {
-	hc0 := HashToPoint(nc, password, zero)
-	hc1 := HashToPoint(nc, password, one)
+	hc0 := HashToPoint(nc, password, dhc0)
+	hc1 := HashToPoint(nc, password, dhc1)
 
-	hs0 := HashToPoint(ns, zero)
+	hs0 := HashToPoint(ns, dhs0)
 
 	//c0 = t0 * (hc0 ** (-self.y))
 
@@ -98,7 +98,7 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		return
 
 	} else {
-		challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proof.Term4.Marshal())
+		challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proof.Term4.Marshal(), proofError)
 		//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
 		//return False
 		//
@@ -129,8 +129,8 @@ func (c *Client) Rotate(a *big.Int) {
 }
 
 func (c *Client) Update(t0, t1 *Point, ns []byte, a, b *big.Int) (t00, t11 *Point) {
-	hs0 := HashToPoint(ns, zero)
-	hs1 := HashToPoint(ns, one)
+	hs0 := HashToPoint(ns, dhs0)
+	hs1 := HashToPoint(ns, dhs1)
 
 	t00 = t0.ScalarMult(a).Add(hs0.ScalarMult(b))
 	t11 = t1.ScalarMult(a).Add(hs1.ScalarMult(b))
