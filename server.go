@@ -13,7 +13,7 @@ func (s *Server) SampleRandomValues() (ns []byte, c0, c1 *Point, proof *Proof) {
 	ns = make([]byte, 32)
 	rand.Read(ns)
 	hs0, hs1, c0, c1 := s.Eval(ns)
-	proof = s.Prove(hs0, hs1)
+	proof = s.Prove(hs0, hs1, c0, c1)
 	return
 }
 
@@ -24,7 +24,7 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 	if hs0.ScalarMult(s.X).Equal(c0) {
 		res = true
 		c1 = hs1.ScalarMult(s.X)
-		proof = s.Prove(hs0, hs1)
+		proof = s.Prove(hs0, hs1, c0, c1)
 
 		return
 	} else {
@@ -58,12 +58,8 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 		term3 := X.ScalarMult(blindA)
 		term4 := new(Point).ScalarBaseMult(blindB)
 
-		//TODO hash others according to spec
-		buf := append(term1.Marshal(), term2.Marshal()...)
-		buf = append(buf, term3.Marshal()...)
-		buf = append(buf, term4.Marshal()...)
-
-		challenge := HashZ(buf)
+		pub := new(Point).ScalarBaseMult(s.X)
+		challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal())
 
 		proof = &Proof{
 			Term1:     term1,
@@ -73,7 +69,7 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 			Res1:      gf.Add(blindA, gf.Mul(challenge, a)),
 			Res2:      gf.Add(blindB, gf.Mul(challenge, b)),
 			I:         I,
-			PublicKey: new(Point).ScalarBaseMult(s.X),
+			PublicKey: pub,
 		}
 		return
 	}
@@ -88,7 +84,7 @@ func (s *Server) Eval(ns []byte) (hs0, hs1, c0, c1 *Point) {
 	return
 }
 
-func (s *Server) Prove(hs0, hs1 *Point) *Proof {
+func (s *Server) Prove(hs0, hs1, c0, c1 *Point) *Proof {
 	blindX := RandomZ()
 
 	term1 := hs0.ScalarMult(blindX)
@@ -100,7 +96,9 @@ func (s *Server) Prove(hs0, hs1 *Point) *Proof {
 	buf := append(term1.Marshal(), term2.Marshal()...)
 	buf = append(buf, term3.Marshal()...)
 
-	challenge := HashZ(buf)
+	pub := new(Point).ScalarBaseMult(s.X)
+
+	challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal())
 
 	res := gf.Add(blindX, gf.Mul(challenge, s.X))
 
@@ -109,7 +107,7 @@ func (s *Server) Prove(hs0, hs1 *Point) *Proof {
 		Term2:     term2,
 		Term3:     term3,
 		Res:       res,
-		PublicKey: new(Point).ScalarBaseMult(s.X),
+		PublicKey: pub,
 	}
 
 }

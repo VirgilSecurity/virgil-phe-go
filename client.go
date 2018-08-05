@@ -37,10 +37,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 	hs0 := HashToPoint(nonce, 0)
 	hs1 := HashToPoint(nonce, 1)
 
-	buf := append(proof.Term1.Marshal(), proof.Term2.Marshal()...)
-	buf = append(buf, proof.Term3.Marshal()...)
-
-	challenge := HashZ(buf)
+	challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal())
 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
 	//                return False
@@ -101,11 +98,7 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		return
 
 	} else {
-		buf := append(proof.Term1.Marshal(), proof.Term2.Marshal()...)
-		buf = append(buf, proof.Term3.Marshal()...)
-		buf = append(buf, proof.Term4.Marshal()...)
-
-		challenge := HashZ(buf)
+		challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proof.Term4.Marshal())
 		//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
 		//return False
 		//
@@ -116,7 +109,7 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		t2 := c0.ScalarMult(proof.Res1).Add(hs0.ScalarMult(proof.Res2))
 
 		if !t1.Equal(t2) {
-			return nil, errors.New("verification failed")
+			return nil, errors.New("proof verification failed")
 		}
 
 		t1 = proof.Term3.Add(proof.Term4).Add(proof.I.ScalarMult(challenge))

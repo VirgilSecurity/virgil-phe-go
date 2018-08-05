@@ -3,17 +3,17 @@ package phe
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
 	"io"
 	"math/big"
 
 	"github.com/Scratch-net/SWU"
-	"golang.org/x/crypto/hkdf"
+	"golang.org/x/crypto/sha3"
 )
 
 var (
-	curve = elliptic.P256()
-	gf    = swu.GF{P: curve.Params().N}
+	curve  = elliptic.P256()
+	curveG = new(Point).ScalarBaseMult(new(big.Int).SetUint64(1))
+	gf     = swu.GF{P: curve.Params().N}
 )
 
 type Proof struct {
@@ -41,16 +41,21 @@ func RandomZ() (z *big.Int) {
 	return
 }
 
-func HashZ(data []byte) (z *big.Int) {
+func HashZ(data ...[]byte) (z *big.Int) {
 
-	kdf := hkdf.New(sha256.New, data, data, []byte("HashZ"))
+	xof := sha3.NewShake256()
+
+	for _, d := range data {
+		xof.Write(d)
+	}
+
 	h := make([]byte, 32)
-	kdf.Read(h)
+	xof.Read(h)
 
 	for z == nil {
 		// If the scalar is out of range, sample another  number.
 		if new(big.Int).SetBytes(h).Cmp(curve.Params().N) >= 0 {
-			kdf.Read(h)
+			xof.Read(h)
 		} else {
 			z = new(big.Int).SetBytes(h)
 		}
