@@ -36,7 +36,7 @@ func BenchmarkAddP256(b *testing.B) {
 func Test_PHE(t *testing.T) {
 
 	//first, ask server for random values & proof
-	ns, c0, c1, proof := l.SampleRandomValues()
+	ns, c0, c1, proof := l.GetEnrollment()
 
 	// Enroll account
 
@@ -73,7 +73,7 @@ func Test_PHE(t *testing.T) {
 func Test_PHE_InvalidPassword(t *testing.T) {
 
 	//first, ask server for random values & proof
-	ns, c0, c1, proof := l.SampleRandomValues()
+	ns, c0, c1, proof := l.GetEnrollment()
 
 	// Enroll account
 	nc, _, t0, t1, err := s.EnrollAccount(pwd, ns, c0, c1, proof)
@@ -90,54 +90,64 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 	assert.Nil(t, mDec)
 }
 
-/*func BenchmarkRateLimiter_Encrypt(b *testing.B) {
+func BenchmarkServer_GetEnrollment(b *testing.B) {
+
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		l.SampleRandomValues()
+		l.GetEnrollment()
 	}
 }
 
-func BenchmarkRateLimiter_Decrypt(b *testing.B) {
+func BenchmarkClient_EnrollAccount(b *testing.B) {
 
-	nr, _, _, _ := l.SampleRandomValues()
+	ns, c0, c1, proof := l.GetEnrollment()
+	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		l.VerifyPassword(nr)
+		_, _, _, _, err := s.EnrollAccount(pwd, ns, c0, c1, proof)
+		assert.NoError(b, err)
 	}
 }
 
-func BenchmarkServer_Encrypt(b *testing.B) {
+func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
+	//first, ask server for random values & proof
+	ns, c0, c1, proof := l.GetEnrollment()
 
-	_, c0, c1, _ := l.SampleRandomValues()
+	// Enroll account
+
+	nc, _, t0, _, err := s.EnrollAccount(pwd, ns, c0, c1, proof)
+	assert.NoError(b, err)
+	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		s.EnrollAccount([]byte("Password"), nil, c0, c1, nil)
+		//Check password request
+		s.CreateVerifyPasswordRequest(nc, pwd, t0)
 	}
 }
 
-func BenchmarkServer_DecryptStart(b *testing.B) {
+func BenchmarkLoginFlow(b *testing.B) {
 
-	_, c0, c1, _ := l.SampleRandomValues()
+	//first, ask server for random values & proof
+	ns, c0, c1, proof := l.GetEnrollment()
 
-	ns, _, t0, t1, _ := s.EnrollAccount([]byte("Password"), nil, c0, c1, nil)
+	// Enroll account
+
+	nc, m, t0, t1, err := s.EnrollAccount(pwd, ns, c0, c1, proof)
+	assert.NoError(b, err)
+	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		s.CreateVerifyPasswordRequest(ns, []byte("Password"), t0, t1)
+		//Check password request
+		c0 = s.CreateVerifyPasswordRequest(nc, pwd, t0)
+		//Check password on server
+		res, c1, proof := l.VerifyPassword(ns, c0)
+		//validate response & decrypt M
+		mDec, err := s.CheckResponseAndDecrypt(t0, t1, pwd, ns, nc, c1, proof, res)
+		assert.NoError(b, err)
+		// decrypted m must be the same as original
+		assert.True(b, m.Equal(mDec))
 	}
 }
-
-func BenchmarkServer_DecryptEnd(b *testing.B) {
-
-	nr, c0, c1, _ := l.SampleRandomValues()
-
-	ns, _, t0, t1, _ := s.EnrollAccount([]byte("Password"), nil, c0, c1, nil)
-
-	_, t1x := s.CreateVerifyPasswordRequest(ns, []byte("Password"), t0, t1)
-	_, c1y, _ := l.VerifyPassword(nr)
-
-	for i := 0; i < b.N; i++ {
-		s.VerifyPassword(t1x, c1y)
-	}
-}*/

@@ -9,7 +9,7 @@ type Server struct {
 	X *big.Int
 }
 
-func (s *Server) SampleRandomValues() (ns []byte, c0, c1 *Point, proof *Proof) {
+func (s *Server) GetEnrollment() (ns []byte, c0, c1 *Point, proof *Proof) {
 	ns = make([]byte, 32)
 	rand.Read(ns)
 	hs0, hs1, c0, c1 := s.Eval(ns)
