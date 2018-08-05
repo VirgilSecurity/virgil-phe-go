@@ -3,7 +3,6 @@ package phe
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	"io"
 	"math/big"
 
 	"github.com/Scratch-net/SWU"
@@ -27,27 +26,23 @@ type Proof struct {
 }
 
 func RandomZ() (z *big.Int) {
-	priv := make([]byte, 32)
+	rz, _ := rand.Int(rand.Reader, maxZ)
 
 	for z == nil {
-		io.ReadFull(rand.Reader, priv)
-
 		// If the scalar is out of range, sample another random number.
 
-		if new(big.Int).SetBytes(priv).Cmp(curve.Params().N) >= 0 {
-			panic(priv)
+		if rz.Cmp(curve.Params().N) >= 0 {
+			rz, _ = rand.Int(rand.Reader, maxZ)
 
 		} else {
-			z = new(big.Int).SetBytes(priv)
+			z = rz
 		}
 	}
 	return
 }
 
 func HashZ(data ...[]byte) (z *big.Int) {
-
 	xof := sha3.TupleHashXOF256(data, []byte("HashZ"))
-
 	rz, _ := rand.Int(xof, maxZ)
 
 	for z == nil {
@@ -62,7 +57,6 @@ func HashZ(data ...[]byte) (z *big.Int) {
 }
 
 func HashToPoint(data ...[]byte) *Point {
-
 	hash := make([]byte, 32)
 	sha3.TupleHash256(data, []byte("HashToPoint"), hash)
 	x, y := swu.HashToPoint(hash)

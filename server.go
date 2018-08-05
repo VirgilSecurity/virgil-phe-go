@@ -45,11 +45,11 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 
 		X := new(Point).ScalarBaseMult(s.X)
 
-		//					I = (self.X ** a) * (self.G ** b)
-		//                term1 = c0     ** blind_a
-		//                term2 = hs0    ** blind_b
-		//                term3 = self.X ** blind_a
-		//                term4 = self.G ** blind_b
+		// I = (self.X ** a) * (self.G ** b)
+		// term1 = c0     ** blind_a
+		// term2 = hs0    ** blind_b
+		// term3 = self.X ** blind_a
+		// term4 = self.G ** blind_b
 
 		I := X.ScalarMult(a).Add(new(Point).ScalarBaseMult(b))
 
@@ -109,7 +109,6 @@ func (s *Server) Prove(hs0, hs1, c0, c1 *Point) *Proof {
 
 func (s *Server) Rotate() (a, b *big.Int) {
 	a, b = RandomZ(), RandomZ()
-
 	s.X = gf.Add(gf.Mul(a, s.X), b)
 
 	return

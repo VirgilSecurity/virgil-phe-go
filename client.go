@@ -40,7 +40,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 	challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal())
 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
-	//                return False
+	// return False
 
 	t1 := proof.Term1.Add(c0.ScalarMult(challenge))
 	t2 := hs0.ScalarMult(proof.Res)
@@ -50,7 +50,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 	}
 
 	// if term2 * (c1 ** challenge) != hs1 ** blind_x:
-	//                return False
+	// return False
 
 	t1 = proof.Term2.Add(c1.ScalarMult(challenge))
 	t2 = hs1.ScalarMult(proof.Res)
@@ -60,7 +60,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 	}
 
 	//if term3 * (self.X ** challenge) != self.G ** blind_x:
-	//                return False
+	// return False
 
 	t1 = proof.Term3.Add(proof.PublicKey.ScalarMult(challenge))
 	t2 = new(Point).ScalarBaseMult(proof.Res)
