@@ -13,6 +13,7 @@ import (
 
 var (
 	curve = elliptic.P256()
+	gf    = swu.GF{P: curve.Params().N}
 )
 
 type Proof struct {
@@ -57,7 +58,7 @@ func HashZ(data []byte) (z *big.Int) {
 	return
 }
 
-func GroupHash(data []byte, extraByte byte) *Point {
+func HashToPoint(data []byte, extraByte byte) *Point {
 
 	x, y := swu.HashToPoint(append(data, extraByte))
 	return &Point{x, y}

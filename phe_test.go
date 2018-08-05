@@ -48,7 +48,7 @@ func Test_PHE(t *testing.T) {
 	//Check password on server
 	res, c1, proof := l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
-	mDec, err := s.CheckResponse(t0, t1, pwd, ns, nc, c1, proof, res)
+	mDec, err := s.CheckResponseAndDecrypt(t0, t1, pwd, ns, nc, c1, proof, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.True(t, m.Equal(mDec))
@@ -63,7 +63,7 @@ func Test_PHE(t *testing.T) {
 	//Check password on server
 	res, c1, proof = l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
-	mDec, err = s.CheckResponse(t0, t1, pwd, ns, nc, c1, proof, res)
+	mDec, err = s.CheckResponseAndDecrypt(t0, t1, pwd, ns, nc, c1, proof, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.True(t, m.Equal(mDec))
@@ -84,7 +84,7 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 	//Check password on server
 	res, c1, proof := l.VerifyPassword(ns, c0)
 	//validate response & decrypt M
-	mDec, err := s.CheckResponse(t0, t1, []byte("Password1"), ns, nc, c1, proof, res)
+	mDec, err := s.CheckResponseAndDecrypt(t0, t1, []byte("Password1"), ns, nc, c1, proof, res)
 	assert.Nil(t, err)
 	// decrypted m must be nil
 	assert.Nil(t, mDec)

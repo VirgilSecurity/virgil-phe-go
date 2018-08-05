@@ -1,11 +1,8 @@
 package phe
 
 import (
-	"crypto/elliptic"
 	"crypto/rand"
 	"math/big"
-
-	"github.com/Scratch-net/SWU"
 )
 
 type Server struct {
@@ -21,8 +18,8 @@ func (s *Server) SampleRandomValues() (ns []byte, c0, c1 *Point, proof *Proof) {
 }
 
 func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proof *Proof) {
-	hs0 := GroupHash(ns, 0)
-	hs1 := GroupHash(ns, 1)
+	hs0 := HashToPoint(ns, 0)
+	hs1 := HashToPoint(ns, 1)
 
 	if hs0.ScalarMult(s.X).Equal(c0) {
 		res = true
@@ -33,10 +30,10 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 	} else {
 
 		r := RandomZ()
-		f := &swu.GF{P: curve.Params().N}
-		minusR := f.Neg(r)
 
-		minusRX := f.Mul(minusR, s.X)
+		minusR := gf.Neg(r)
+
+		minusRX := gf.Mul(minusR, s.X)
 
 		c1 = c0.ScalarMult(r).Add(hs0.ScalarMult(minusRX))
 
@@ -73,8 +70,8 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 			Term2:     term2,
 			Term3:     term3,
 			Term4:     term4,
-			Res1:      f.Add(blindA, f.Mul(challenge, a)),
-			Res2:      f.Add(blindB, f.Mul(challenge, b)),
+			Res1:      gf.Add(blindA, gf.Mul(challenge, a)),
+			Res2:      gf.Add(blindB, gf.Mul(challenge, b)),
 			I:         I,
 			PublicKey: new(Point).ScalarBaseMult(s.X),
 		}
@@ -83,8 +80,8 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 }
 
 func (s *Server) Eval(ns []byte) (hs0, hs1, c0, c1 *Point) {
-	hs0 = GroupHash(ns, 0)
-	hs1 = GroupHash(ns, 1)
+	hs0 = HashToPoint(ns, 0)
+	hs1 = HashToPoint(ns, 1)
 
 	c0 = hs0.ScalarMult(s.X)
 	c1 = hs1.ScalarMult(s.X)
@@ -105,8 +102,6 @@ func (s *Server) Prove(hs0, hs1 *Point) *Proof {
 
 	challenge := HashZ(buf)
 
-	gf := &swu.GF{P: elliptic.P256().Params().N}
-
 	res := gf.Add(blindX, gf.Mul(challenge, s.X))
 
 	return &Proof{
@@ -120,13 +115,9 @@ func (s *Server) Prove(hs0, hs1 *Point) *Proof {
 }
 
 func (s *Server) Rotate() (a, b *big.Int) {
-	f := swu.GF{P: curve.Params().N}
-
 	a, b = RandomZ(), RandomZ()
 
-	x := s.X
-	xa := f.Mul(x, a)
-	s.X = f.Add(xa, b)
+	s.X = gf.Add(gf.Mul(a, s.X), b)
 
 	return
 }
