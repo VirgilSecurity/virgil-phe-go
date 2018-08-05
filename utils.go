@@ -14,6 +14,9 @@ var (
 	curve  = elliptic.P256()
 	curveG = new(Point).ScalarBaseMult(new(big.Int).SetUint64(1))
 	gf     = swu.GF{P: curve.Params().N}
+	maxZ   = new(big.Int).SetBit(new(big.Int), 256, 1)
+	zero   = []byte{0}
+	one    = []byte{1}
 )
 
 type Proof struct {
@@ -43,28 +46,25 @@ func RandomZ() (z *big.Int) {
 
 func HashZ(data ...[]byte) (z *big.Int) {
 
-	xof := sha3.NewShake256()
+	xof := sha3.TupleHashXOF256(data, []byte("HashZ"))
 
-	for _, d := range data {
-		xof.Write(d)
-	}
-
-	h := make([]byte, 32)
-	xof.Read(h)
+	rz, _ := rand.Int(xof, maxZ)
 
 	for z == nil {
 		// If the scalar is out of range, sample another  number.
-		if new(big.Int).SetBytes(h).Cmp(curve.Params().N) >= 0 {
-			xof.Read(h)
+		if rz.Cmp(curve.Params().N) >= 0 {
+			rz, _ = rand.Int(xof, maxZ)
 		} else {
-			z = new(big.Int).SetBytes(h)
+			z = rz
 		}
 	}
 	return
 }
 
-func HashToPoint(data []byte, extraByte byte) *Point {
+func HashToPoint(data ...[]byte) *Point {
 
-	x, y := swu.HashToPoint(append(data, extraByte))
+	hash := make([]byte, 32)
+	sha3.TupleHash256(data, []byte("HashToPoint"), hash)
+	x, y := swu.HashToPoint(hash)
 	return &Point{x, y}
 }

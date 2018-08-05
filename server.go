@@ -18,8 +18,8 @@ func (s *Server) SampleRandomValues() (ns []byte, c0, c1 *Point, proof *Proof) {
 }
 
 func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proof *Proof) {
-	hs0 := HashToPoint(ns, 0)
-	hs1 := HashToPoint(ns, 1)
+	hs0 := HashToPoint(ns, zero)
+	hs1 := HashToPoint(ns, one)
 
 	if hs0.ScalarMult(s.X).Equal(c0) {
 		res = true
@@ -76,8 +76,8 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 }
 
 func (s *Server) Eval(ns []byte) (hs0, hs1, c0, c1 *Point) {
-	hs0 = HashToPoint(ns, 0)
-	hs1 = HashToPoint(ns, 1)
+	hs0 = HashToPoint(ns, zero)
+	hs1 = HashToPoint(ns, one)
 
 	c0 = hs0.ScalarMult(s.X)
 	c1 = hs1.ScalarMult(s.X)
@@ -93,13 +93,8 @@ func (s *Server) Prove(hs0, hs1, c0, c1 *Point) *Proof {
 
 	//challenge = group.hash((self.X, self.G, c0, c1, term1, term2, term3), target_type=ZR)
 
-	buf := append(term1.Marshal(), term2.Marshal()...)
-	buf = append(buf, term3.Marshal()...)
-
 	pub := new(Point).ScalarBaseMult(s.X)
-
 	challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal())
-
 	res := gf.Add(blindX, gf.Mul(challenge, s.X))
 
 	return &Proof{
