@@ -28,6 +28,7 @@ var (
 type Proof struct {
 	Term1, Term2, Term3, Term4, I *Point
 	PublicKey                     *Point
+	C1                            *Point
 	Res                           *big.Int
 	Res1, Res2                    *big.Int
 }
