@@ -25,6 +25,7 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 		res = true
 		c1 = hs1.ScalarMult(s.X)
 		proof = s.Prove(hs0, hs1, c0, c1)
+		gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
 
 		return
 	} else {
@@ -71,6 +72,8 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 			I:         I,
 			PublicKey: pub,
 		}
+
+		gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
 		return
 	}
 }
@@ -81,6 +84,8 @@ func (s *Server) Eval(ns []byte) (hs0, hs1, c0, c1 *Point) {
 
 	c0 = hs0.ScalarMult(s.X)
 	c1 = hs1.ScalarMult(s.X)
+
+	gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
 	return
 }
 

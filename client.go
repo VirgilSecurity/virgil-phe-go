@@ -65,6 +65,9 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 	t1 = proof.Term3.Add(proof.PublicKey.ScalarMult(challenge))
 	t2 = new(Point).ScalarBaseMult(proof.Res)
 
+	gf.FreeInt(hs0.X, hs0.Y)
+	gf.FreeInt(hs1.X, hs1.Y)
+
 	if !t1.Equal(t2) {
 		return false
 	}
@@ -76,6 +79,7 @@ func (c *Client) CreateVerifyPasswordRequest(nc, password []byte, t0 *Point) (c0
 	hc0 := HashToPoint(nc, password, dhc0)
 	minusY := gf.Neg(c.Y)
 	c0 = t0.Add(hc0.ScalarMult(minusY))
+	gf.FreeInt(hc0.X, hc0.Y)
 	return
 }
 
@@ -95,6 +99,9 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
 
 		m = (t1.Add(c1.Neg()).Add(hc1.ScalarMult(minusY))).ScalarMult(gf.Inv(c.Y))
+
+		gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
+
 		return
 
 	} else {
@@ -109,6 +116,7 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		t2 := c0.ScalarMult(proof.Res1).Add(hs0.ScalarMult(proof.Res2))
 
 		if !t1.Equal(t2) {
+			gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 			return nil, errors.New("proof verification failed")
 		}
 
@@ -116,10 +124,13 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		t2 = proof.PublicKey.ScalarMult(proof.Res1).Add(new(Point).ScalarBaseMult(proof.Res2))
 
 		if !t1.Equal(t2) {
+			gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 			return nil, errors.New("verification failed")
 		}
 
 	}
+
+	gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 
 	return nil, nil
 }

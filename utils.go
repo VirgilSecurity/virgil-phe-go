@@ -33,13 +33,15 @@ type Proof struct {
 }
 
 func RandomZ() (z *big.Int) {
-	rz, _ := rand.Int(rand.Reader, maxZ)
+
+	rr := rand.Reader
+	rz, _ := rand.Int(rr, maxZ)
 
 	for z == nil {
 		// If the scalar is out of range, sample another random number.
 
 		if rz.Cmp(curve.Params().N) >= 0 {
-			rz, _ = rand.Int(rand.Reader, maxZ)
+			rz, _ = rand.Int(rr, maxZ)
 
 		} else {
 			z = rz
