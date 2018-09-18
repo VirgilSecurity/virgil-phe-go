@@ -17,6 +17,10 @@ func (s *Server) GetEnrollment() (ns []byte, c0, c1 *Point, proof *Proof) {
 	return
 }
 
+func (s *Server) GetPublicKey() *Point {
+	return new(Point).ScalarBaseMult(s.X)
+}
+
 func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proof *Proof) {
 	hs0 := HashToPoint(ns, dhs0)
 	hs1 := HashToPoint(ns, dhs1)
@@ -63,14 +67,13 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 		challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
 
 		proof = &Proof{
-			Term1:     term1,
-			Term2:     term2,
-			Term3:     term3,
-			Term4:     term4,
-			Res1:      gf.Add(blindA, gf.Mul(challenge, a)),
-			Res2:      gf.Add(blindB, gf.Mul(challenge, b)),
-			I:         I,
-			PublicKey: pub,
+			Term1: term1,
+			Term2: term2,
+			Term3: term3,
+			Term4: term4,
+			Res1:  gf.Add(blindA, gf.Mul(challenge, a)),
+			Res2:  gf.Add(blindB, gf.Mul(challenge, b)),
+			I:     I,
 		}
 
 		gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
@@ -103,18 +106,18 @@ func (s *Server) Prove(hs0, hs1, c0, c1 *Point) *Proof {
 	res := gf.Add(blindX, gf.Mul(challenge, s.X))
 
 	return &Proof{
-		Term1:     term1,
-		Term2:     term2,
-		Term3:     term3,
-		Res:       res,
-		PublicKey: pub,
+		Term1: term1,
+		Term2: term2,
+		Term3: term3,
+		Res:   res,
 	}
 
 }
 
-func (s *Server) Rotate() (a, b *big.Int) {
+func (s *Server) Rotate() (a, b *big.Int, newPub *Point) {
 	a, b = RandomZ(), RandomZ()
 	s.X = gf.Add(gf.Mul(a, s.X), b)
+	newPub = s.GetPublicKey()
 
 	return
 }

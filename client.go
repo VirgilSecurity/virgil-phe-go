@@ -7,7 +7,8 @@ import (
 )
 
 type Client struct {
-	Y *big.Int
+	Y               *big.Int
+	ServerPublicKey *Point
 }
 
 func (c *Client) EnrollAccount(password, ns []byte, c0, c1 *Point, proof *Proof) (nc []byte, m, t0, t1 *Point, err error) {
@@ -37,7 +38,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 	hs0 := HashToPoint(nonce, dhs0)
 	hs1 := HashToPoint(nonce, dhs1)
 
-	challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proofOk)
+	challenge := HashZ(c.ServerPublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proofOk)
 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
 	// return False
@@ -62,7 +63,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0, c1 *Point) bool {
 	//if term3 * (self.X ** challenge) != self.G ** blind_x:
 	// return False
 
-	t1 = proof.Term3.Add(proof.PublicKey.ScalarMult(challenge))
+	t1 = proof.Term3.Add(c.ServerPublicKey.ScalarMult(challenge))
 	t2 = new(Point).ScalarBaseMult(proof.Res)
 
 	gf.FreeInt(hs0.X, hs0.Y)
@@ -105,7 +106,7 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		return
 
 	} else {
-		challenge := HashZ(proof.PublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proof.Term4.Marshal(), proofError)
+		challenge := HashZ(c.ServerPublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proof.Term4.Marshal(), proofError)
 		//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
 		//return False
 		//
@@ -121,7 +122,7 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		}
 
 		t1 = proof.Term3.Add(proof.Term4).Add(proof.I.ScalarMult(challenge))
-		t2 = proof.PublicKey.ScalarMult(proof.Res1).Add(new(Point).ScalarBaseMult(proof.Res2))
+		t2 = c.ServerPublicKey.ScalarMult(proof.Res1).Add(new(Point).ScalarBaseMult(proof.Res2))
 
 		if !t1.Equal(t2) {
 			gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
@@ -135,8 +136,9 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 	return nil, nil
 }
 
-func (c *Client) Rotate(a *big.Int) {
+func (c *Client) Rotate(a *big.Int, newPub *Point) {
 	c.Y = gf.Mul(c.Y, a)
+	c.ServerPublicKey = newPub
 }
 
 func (c *Client) Update(t0, t1 *Point, ns []byte, a, b *big.Int) (t00, t11 *Point) {

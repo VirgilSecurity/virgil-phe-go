@@ -10,12 +10,11 @@ type Point struct {
 }
 
 var (
-	c  = elliptic.P256()
-	Pn = c.Params().P
+	Pn = curve.Params().P
 )
 
 func (p *Point) Add(a *Point) *Point {
-	x, y := c.Add(p.X, p.Y, a.X, a.Y)
+	x, y := curve.Add(p.X, p.Y, a.X, a.Y)
 	return &Point{x, y}
 }
 
@@ -27,19 +26,19 @@ func (p *Point) Neg() *Point {
 }
 
 func (p *Point) ScalarMult(b *big.Int) *Point {
-	x, y := c.ScalarMult(p.X, p.Y, b.Bytes())
+	x, y := curve.ScalarMult(p.X, p.Y, b.Bytes())
 
 	return &Point{x, y}
 }
 
 func (p *Point) ScalarBaseMult(b *big.Int) *Point {
-	x, y := c.ScalarBaseMult(b.Bytes())
+	x, y := curve.ScalarBaseMult(b.Bytes())
 
 	return &Point{x, y}
 }
 
 func (p *Point) Marshal() []byte {
-	return elliptic.Marshal(c, p.X, p.Y)
+	return elliptic.Marshal(curve, p.X, p.Y)
 }
 
 func (p *Point) Equal(other *Point) bool {
