@@ -3,6 +3,8 @@ package phe
 import (
 	"crypto/elliptic"
 	"math/big"
+
+	"github.com/pkg/errors"
 )
 
 type Point struct {
@@ -12,6 +14,20 @@ type Point struct {
 var (
 	Pn = curve.Params().P
 )
+
+func PointUnmarshal(data []byte) (*Point, error) {
+	if len(data) > 65 {
+		return nil, errors.New("Invalid curve point")
+	}
+	x, y := elliptic.Unmarshal(curve, data)
+	if x == nil || y == nil {
+		return nil, errors.New("Invalid curve point")
+	}
+	return &Point{
+		X: x,
+		Y: y,
+	}, nil
+}
 
 func (p *Point) Add(a *Point) *Point {
 	x, y := curve.Add(p.X, p.Y, a.X, a.Y)

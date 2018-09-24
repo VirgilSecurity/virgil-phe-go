@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/Scratch-net/SWU"
-	"github.com/ameteiko/golang-kit/test/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPoint_Add_Neg(t *testing.T) {
@@ -31,4 +31,14 @@ func MakePoint() *Point {
 	rand.Read(b)
 	x, y := swu.HashToPoint(b)
 	return &Point{x, y}
+}
+
+func TestPointUnmarshal(t *testing.T) {
+	p1 := MakePoint()
+
+	data := p1.Marshal()
+
+	p2, err := PointUnmarshal(data)
+	assert.NoError(t, err)
+	assert.True(t, p2.Equal(p1))
 }
