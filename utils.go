@@ -25,12 +25,7 @@ var (
 	proofError = []byte("ProofError")
 )
 
-type Proof struct {
-	Term1, Term2, Term3, Term4, I *Point
-	Res                           *big.Int
-	Res1, Res2                    *big.Int
-}
-
+// RandomZ generates big random 256 bit integer which must be less than curve's N parameter
 func RandomZ() (z *big.Int) {
 
 	rr := rand.Reader
@@ -54,6 +49,7 @@ func RandomZ() (z *big.Int) {
 	return
 }
 
+// HashZ maps arrays of bytes to an integer less than curve's N parameter
 func HashZ(data ...[]byte) (z *big.Int) {
 	if len(data) < 2 {
 		panic(data)
@@ -78,6 +74,7 @@ func HashZ(data ...[]byte) (z *big.Int) {
 	return
 }
 
+// HashToPoint maps arrays of bytes to a valid curve point
 func HashToPoint(data ...[]byte) *Point {
 
 	if len(data) < 2 {

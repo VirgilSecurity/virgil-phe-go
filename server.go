@@ -20,33 +20,77 @@ func NewServer(key []byte) (*Server, error) {
 	}, nil
 }
 
-func (s *Server) GetEnrollment() (ns []byte, c0, c1 *Point, proof *Proof) {
-	ns = make([]byte, 32)
+// GenerateServer creates new server instance and generates a private key for it
+func GenerateServer() (*Server, error) {
+	return &Server{
+		X: RandomZ(),
+	}, nil
+}
+
+func (s *Server) GetEnrollment() *Enrollment {
+	ns := make([]byte, 32)
 	_, err := rand.Read(ns)
 	if err != nil {
 		panic(err)
 	}
 	hs0, hs1, c0, c1 := s.eval(ns)
-	proof = s.prove(hs0, hs1, c0, c1)
-	return
+	proof := s.prove(hs0, hs1, c0, c1)
+	return &Enrollment{
+		NS:    ns,
+		C0:    c0.Marshal(),
+		C1:    c1.Marshal(),
+		Proof: proof,
+	}
 }
 
-func (s *Server) GetPublicKey() *Point {
-	return new(Point).ScalarBaseMult(s.X)
+func (s *Server) GetPublicKey() []byte {
+	return new(Point).ScalarBaseMult(s.X).Marshal()
 }
 
-func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proof *Proof) {
+func (s *Server) GetPrivateKey() []byte {
+	return s.X.Bytes()
+}
+
+func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPasswordResponse, err error) {
+
+	if req == nil {
+		err = errors.New("Invalid password verify request")
+		return
+	}
+
+	if len(req.NS) > 32 || len(req.NS) == 0 {
+		err = errors.New("Invalid password verify request")
+		return
+	}
+
+	ns := req.NS
+
+	c0, err := PointUnmarshal(req.C0)
+
+	if err != nil {
+		return
+	}
+
 	hs0 := HashToPoint(ns, dhs0)
 	hs1 := HashToPoint(ns, dhs1)
 
 	if hs0.ScalarMult(s.X).Equal(c0) {
-		res = true
-		c1 = hs1.ScalarMult(s.X)
-		proof = s.prove(hs0, hs1, c0, c1)
+		//password is ok
+
+		c1 := hs1.ScalarMult(s.X)
+
+		response = &VerifyPasswordResponse{
+			Res:   true,
+			C1:    c1.Marshal(),
+			Proof: s.prove(hs0, hs1, c0, c1),
+		}
+
 		gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
 
 		return
 	}
+
+	//password is invalid
 
 	r := RandomZ()
 
@@ -54,7 +98,7 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 
 	minusRX := gf.Mul(minusR, s.X)
 
-	c1 = c0.ScalarMult(r).Add(hs0.ScalarMult(minusRX))
+	c1 := c0.ScalarMult(r).Add(hs0.ScalarMult(minusRX))
 
 	a := r
 	b := minusRX
@@ -80,14 +124,18 @@ func (s *Server) VerifyPassword(ns []byte, c0 *Point) (res bool, c1 *Point, proo
 	pub := new(Point).ScalarBaseMult(s.X)
 	challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
 
-	proof = &Proof{
-		Term1: term1,
-		Term2: term2,
-		Term3: term3,
-		Term4: term4,
-		Res1:  gf.Add(blindA, gf.Mul(challenge, a)),
-		Res2:  gf.Add(blindB, gf.Mul(challenge, b)),
-		I:     I,
+	response = &VerifyPasswordResponse{
+		Res: false,
+		C1:  c1.Marshal(),
+		Proof: &Proof{
+			Term1: term1.Marshal(),
+			Term2: term2.Marshal(),
+			Term3: term3.Marshal(),
+			Term4: term4.Marshal(),
+			Res1:  gf.Add(blindA, gf.Mul(challenge, a)).Bytes(),
+			Res2:  gf.Add(blindB, gf.Mul(challenge, b)).Bytes(),
+			I:     I.Marshal(),
+		},
 	}
 
 	gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
@@ -119,18 +167,24 @@ func (s *Server) prove(hs0, hs1, c0, c1 *Point) *Proof {
 	res := gf.Add(blindX, gf.Mul(challenge, s.X))
 
 	return &Proof{
-		Term1: term1,
-		Term2: term2,
-		Term3: term3,
-		Res:   res,
+		Term1: term1.Marshal(),
+		Term2: term2.Marshal(),
+		Term3: term3.Marshal(),
+		Res:   res.Bytes(),
 	}
 
 }
 
-func (s *Server) Rotate() (a, b *big.Int, newPrivate []byte, newPub *Point) {
-	a, b = RandomZ(), RandomZ()
+func (s *Server) Rotate() (token *UpdateToken, newPrivate []byte) {
+	a, b := RandomZ(), RandomZ()
 	s.X = gf.Add(gf.Mul(a, s.X), b)
-	newPub = s.GetPublicKey()
+	newPub := s.GetPublicKey()
 	newPrivate = s.X.Bytes()
+
+	token = &UpdateToken{
+		A:            a.Bytes(),
+		B:            b.Bytes(),
+		NewPublicKey: newPub,
+	}
 	return
 }

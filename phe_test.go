@@ -15,7 +15,7 @@ var (
 )
 
 func init() {
-	s = &Server{RandomZ()}
+	s, _ = GenerateServer()
 	c = &Client{Y: RandomZ(), ServerPublicKey: s.GetPublicKey()}
 }
 
@@ -36,34 +36,39 @@ func BenchmarkAddP256(b *testing.B) {
 func Test_PHE(t *testing.T) {
 
 	//first, ask server for random values & proof
-	ns, c0, c1, proof := s.GetEnrollment()
+	enrollment := s.GetEnrollment()
 
 	// Enroll account
 
-	nc, m, t0, t1, err := c.EnrollAccount(pwd, ns, c0, c1, proof)
+	nc, m, t0, t1, err := c.EnrollAccount(pwd, enrollment)
 	assert.NoError(t, err)
 
 	//Check password request
-	c0 = c.CreateVerifyPasswordRequest(nc, pwd, t0)
+	req := c.CreateVerifyPasswordRequest(nc, enrollment.NS, pwd, t0)
 	//Check password on server
-	res, c1, proof := s.VerifyPassword(ns, c0)
+	res, err := s.VerifyPassword(req)
+
+	assert.NoError(t, err)
+
 	//validate response & decrypt M
-	mDec, err := c.CheckResponseAndDecrypt(t0, t1, pwd, ns, nc, c1, proof, res)
+	mDec, err := c.CheckResponseAndDecrypt(t0, t1, pwd, enrollment.NS, nc, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.True(t, m.Equal(mDec))
 
 	//rotation
-	a, b, _, pub := s.Rotate()
-	c.Rotate(a, pub)
-	t0, t1 = c.Update(t0, t1, ns, a, b)
-
+	token, _ := s.Rotate()
+	c.Rotate(token)
+	t0, t1, err = c.Update(t0, t1, enrollment.NS, token)
+	assert.NoError(t, err)
 	//Check password request
-	c0 = c.CreateVerifyPasswordRequest(nc, pwd, t0)
+	req = c.CreateVerifyPasswordRequest(nc, enrollment.NS, pwd, t0)
 	//Check password on server
-	res, c1, proof = s.VerifyPassword(ns, c0)
+	res, err = s.VerifyPassword(req)
+	assert.NoError(t, err)
+
 	//validate response & decrypt M
-	mDec, err = c.CheckResponseAndDecrypt(t0, t1, pwd, ns, nc, c1, proof, res)
+	mDec, err = c.CheckResponseAndDecrypt(t0, t1, pwd, enrollment.NS, nc, res)
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.True(t, m.Equal(mDec))
@@ -73,18 +78,19 @@ func Test_PHE(t *testing.T) {
 func Test_PHE_InvalidPassword(t *testing.T) {
 
 	//first, ask server for random values & proof
-	ns, c0, c1, proof := s.GetEnrollment()
+	enrollment := s.GetEnrollment()
 
 	// Enroll account
-	nc, _, t0, t1, err := c.EnrollAccount(pwd, ns, c0, c1, proof)
+	nc, _, t0, t1, err := c.EnrollAccount(pwd, enrollment)
 	assert.NoError(t, err)
 
 	//Check password request
-	c0 = c.CreateVerifyPasswordRequest(nc, []byte("Password1"), t0)
+	req := c.CreateVerifyPasswordRequest(nc, enrollment.NS, []byte("Password1"), t0)
 	//Check password on server
-	res, c1, proof := s.VerifyPassword(ns, c0)
+	res, err := s.VerifyPassword(req)
+	assert.NoError(t, err)
 	//validate response & decrypt M
-	mDec, err := c.CheckResponseAndDecrypt(t0, t1, []byte("Password1"), ns, nc, c1, proof, res)
+	mDec, err := c.CheckResponseAndDecrypt(t0, t1, []byte("Password1"), enrollment.NS, nc, res)
 	assert.Nil(t, err)
 	// decrypted m must be nil
 	assert.Nil(t, mDec)
@@ -100,52 +106,53 @@ func BenchmarkServer_GetEnrollment(b *testing.B) {
 
 func BenchmarkClient_EnrollAccount(b *testing.B) {
 
-	ns, c0, c1, proof := s.GetEnrollment()
+	enrollment := s.GetEnrollment()
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _, _, _, err := c.EnrollAccount(pwd, ns, c0, c1, proof)
+		_, _, _, _, err := c.EnrollAccount(pwd, enrollment)
 		assert.NoError(b, err)
 	}
 }
 
 func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
 	//first, ask server for random values & proof
-	ns, c0, c1, proof := s.GetEnrollment()
+	enrollment := s.GetEnrollment()
 
 	// Enroll account
 
-	nc, _, t0, _, err := c.EnrollAccount(pwd, ns, c0, c1, proof)
+	nc, _, t0, _, err := c.EnrollAccount(pwd, enrollment)
 	assert.NoError(b, err)
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		//Check password request
-		c.CreateVerifyPasswordRequest(nc, pwd, t0)
+		c.CreateVerifyPasswordRequest(nc, enrollment.NS, pwd, t0)
 	}
 }
 
 func BenchmarkLoginFlow(b *testing.B) {
 
 	//first, ask server for random values & proof
-	ns, c0, c1, proof := s.GetEnrollment()
+	enrollment := s.GetEnrollment()
 
 	// Enroll account
 
-	nc, m, t0, t1, err := c.EnrollAccount(pwd, ns, c0, c1, proof)
+	nc, m, t0, t1, err := c.EnrollAccount(pwd, enrollment)
 	assert.NoError(b, err)
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		//Check password request
-		c0 = c.CreateVerifyPasswordRequest(nc, pwd, t0)
+		req := c.CreateVerifyPasswordRequest(nc, enrollment.NS, pwd, t0)
 		//Check password on server
-		res, c1, proof := s.VerifyPassword(ns, c0)
+		res, err := s.VerifyPassword(req)
+		assert.NoError(b, err)
 		//validate response & decrypt M
-		mDec, err := c.CheckResponseAndDecrypt(t0, t1, pwd, ns, nc, c1, proof, res)
+		mDec, err := c.CheckResponseAndDecrypt(t0, t1, pwd, enrollment.NS, nc, res)
 		assert.NoError(b, err)
 		// decrypted m must be the same as original
 		assert.True(b, m.Equal(mDec))
