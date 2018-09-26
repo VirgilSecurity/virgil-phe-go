@@ -113,8 +113,6 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 	// term3 = self.X ** blind_a
 	// term4 = self.G ** blind_b
 
-	I := X.ScalarMult(a).Add(new(Point).ScalarBaseMult(b))
-
 	term1 := c0.ScalarMult(blindA)
 	term2 := hs0.ScalarMult(blindB)
 	term3 := X.ScalarMult(blindA)
@@ -127,13 +125,12 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 		Res: false,
 		C1:  c1.Marshal(),
 		Proof: &Proof{
-			Term1: term1.Marshal(),
-			Term2: term2.Marshal(),
-			Term3: term3.Marshal(),
-			Term4: term4.Marshal(),
-			Res1:  gf.Add(blindA, gf.Mul(challenge, a)).Bytes(),
-			Res2:  gf.Add(blindB, gf.Mul(challenge, b)).Bytes(),
-			I:     I.Marshal(),
+			Term1:  term1.Marshal(),
+			Term2:  term2.Marshal(),
+			Term3:  term3.Marshal(),
+			Term4:  term4.Marshal(),
+			BlindA: gf.Add(blindA, gf.Mul(challenge, a)).Bytes(),
+			BlindB: gf.Add(blindB, gf.Mul(challenge, b)).Bytes(),
 		},
 	}
 
@@ -166,10 +163,10 @@ func (s *Server) prove(hs0, hs1, c0, c1 *Point) *Proof {
 	res := gf.Add(blindX, gf.Mul(challenge, s.X))
 
 	return &Proof{
-		Term1: term1.Marshal(),
-		Term2: term2.Marshal(),
-		Term3: term3.Marshal(),
-		Res:   res.Bytes(),
+		Term1:  term1.Marshal(),
+		Term2:  term2.Marshal(),
+		Term3:  term3.Marshal(),
+		BlindX: res.Bytes(),
 	}
 
 }

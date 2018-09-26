@@ -2,14 +2,13 @@ package phe
 
 // Proof contains data for client to validate
 type Proof struct {
-	Term1 []byte `json:"term_1,omitempty"`
-	Term2 []byte `json:"term_2,omitempty"`
-	Term3 []byte `json:"term_3,omitempty"`
-	Term4 []byte `json:"term_4,omitempty"`
-	I     []byte `json:"i,omitempty"`
-	Res   []byte `json:"res,omitempty"`
-	Res1  []byte `json:"res_1,omitempty"`
-	Res2  []byte `json:"res_2,omitempty"`
+	Term1  []byte `json:"term_1,omitempty"`
+	Term2  []byte `json:"term_2,omitempty"`
+	Term3  []byte `json:"term_3,omitempty"`
+	Term4  []byte `json:"term_4,omitempty"`
+	BlindX []byte `json:"res,omitempty"`
+	BlindA []byte `json:"res_1,omitempty"`
+	BlindB []byte `json:"res_2,omitempty"`
 }
 
 // UpdateToken contains values needed for value rotation

@@ -2,7 +2,6 @@ package phe
 
 import (
 	"crypto/elliptic"
-	"crypto/subtle"
 	"math/big"
 
 	"github.com/pkg/errors"
@@ -13,9 +12,8 @@ type Point struct {
 }
 
 var (
-	pn       = curve.Params().P
-	zero     = big.NewInt(0)
-	infinity = []byte("infinity")
+	pn   = curve.Params().P
+	zero = big.NewInt(0)
 )
 
 // PointUnmarshal validates & converts byte array to an elliptic curve point object
@@ -25,14 +23,6 @@ func PointUnmarshal(data []byte) (*Point, error) {
 	}
 	x, y := elliptic.Unmarshal(curve, data)
 	if x == nil || y == nil {
-
-		if subtle.ConstantTimeCompare(data, infinity) == 1 {
-			return &Point{
-				X: zero,
-				Y: zero,
-			}, nil
-		}
-
 		return nil, errors.New("Invalid curve point")
 	}
 	return &Point{
@@ -76,7 +66,7 @@ func (p *Point) Marshal() []byte {
 		p.Y.Cmp(zero) != 0 {
 		return elliptic.Marshal(curve, p.X, p.Y)
 	}
-	return infinity
+	panic("zero point")
 }
 
 // Equal checks two points for equality

@@ -75,11 +75,11 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte
 		return false
 	}
 
-	if len(proof.Res) == 0 || len(proof.Res) > 32 {
+	if len(proof.BlindX) == 0 || len(proof.BlindX) > 32 {
 		return false
 	}
 
-	res := new(big.Int).SetBytes(proof.Res)
+	res := new(big.Int).SetBytes(proof.BlindX)
 
 	hs0 := HashToPoint(nonce, dhs0)
 	hs1 := HashToPoint(nonce, dhs1)
@@ -203,21 +203,16 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 			return nil, errors.New("invalid public key")
 		}
 
-		i, err := PointUnmarshal(res.Proof.I)
-		if err != nil {
+		if len(res.Proof.BlindA) == 0 || len(res.Proof.BlindA) > 32 {
 			return nil, errors.New("invalid proof")
 		}
 
-		if len(res.Proof.Res1) == 0 || len(res.Proof.Res1) > 32 {
+		if len(res.Proof.BlindB) == 0 || len(res.Proof.BlindB) > 32 {
 			return nil, errors.New("invalid proof")
 		}
 
-		if len(res.Proof.Res2) == 0 || len(res.Proof.Res2) > 32 {
-			return nil, errors.New("invalid proof")
-		}
-
-		res1 := new(big.Int).SetBytes(res.Proof.Res1)
-		res2 := new(big.Int).SetBytes(res.Proof.Res2)
+		blindA := new(big.Int).SetBytes(res.Proof.BlindA)
+		blindB := new(big.Int).SetBytes(res.Proof.BlindB)
 
 		challenge := HashZ(c.ServerPublicKey, curveG.Marshal(), c0.Marshal(), res.C1, res.Proof.Term1, res.Proof.Term2, res.Proof.Term3, res.Proof.Term4, proofError)
 		//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
@@ -227,15 +222,15 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		//return False
 
 		t1 := term1.Add(term2).Add(c1.ScalarMult(challenge))
-		t2 := c0.ScalarMult(res1).Add(hs0.ScalarMult(res2))
+		t2 := c0.ScalarMult(blindA).Add(hs0.ScalarMult(blindB))
 
 		if !t1.Equal(t2) {
 			gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 			return nil, errors.New("proof verification failed")
 		}
 
-		t1 = term3.Add(term4).Add(i.ScalarMult(challenge))
-		t2 = pub.ScalarMult(res1).Add(new(Point).ScalarBaseMult(res2))
+		t1 = term3.Add(term4)
+		t2 = pub.ScalarMult(blindA).Add(new(Point).ScalarBaseMult(blindB))
 
 		if !t1.Equal(t2) {
 			gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
