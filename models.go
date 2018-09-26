@@ -1,14 +1,22 @@
 package phe
 
+//ClientRecord stores all necessary password protection info
+type ClientRecord struct {
+	NS []byte `json:"ns"`
+	NC []byte `json:"nc"`
+	T0 []byte `json:"t_0"`
+	T1 []byte `json:"t_1"`
+}
+
 // Proof contains data for client to validate
 type Proof struct {
 	Term1  []byte `json:"term_1,omitempty"`
 	Term2  []byte `json:"term_2,omitempty"`
 	Term3  []byte `json:"term_3,omitempty"`
 	Term4  []byte `json:"term_4,omitempty"`
-	BlindX []byte `json:"res,omitempty"`
-	BlindA []byte `json:"res_1,omitempty"`
-	BlindB []byte `json:"res_2,omitempty"`
+	BlindX []byte `json:"blind_x,omitempty"`
+	BlindA []byte `json:"blind_a,omitempty"`
+	BlindB []byte `json:"blind_b,omitempty"`
 }
 
 // UpdateToken contains values needed for value rotation

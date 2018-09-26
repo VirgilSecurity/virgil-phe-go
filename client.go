@@ -2,8 +2,11 @@ package phe
 
 import (
 	"crypto/rand"
+	"crypto/sha512"
 	"errors"
 	"math/big"
+
+	"golang.org/x/crypto/hkdf"
 )
 
 type Client struct {
@@ -11,8 +14,8 @@ type Client struct {
 	ServerPublicKey []byte
 }
 
-func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (nc []byte, m, t0, t1 *Point, err error) {
-	nc = make([]byte, 32)
+func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (rec *ClientRecord, key []byte, err error) {
+	nc := make([]byte, 32)
 	_, err = rand.Read(nc)
 	if err != nil {
 		panic(err)
@@ -23,7 +26,11 @@ func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (nc []by
 	if err != nil {
 		panic(err)
 	}
-	m = HashToPoint(mBuf, dm)
+	m := HashToPoint(mBuf, dm)
+
+	kdf := hkdf.New(sha512.New512_256, m.Marshal(), nil, []byte("Secret"))
+	key = make([]byte, 32)
+	_, err = kdf.Read(key)
 
 	hc0 := HashToPoint(nc, password, dhc0)
 	hc1 := HashToPoint(nc, password, dhc1)
@@ -33,7 +40,7 @@ func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (nc []by
 		return
 	}
 
-	proofValid := c.ValidateProof(enrollment.Proof, enrollment.NS, c0, enrollment.C1)
+	proofValid := c.validateProof(enrollment.Proof, enrollment.NS, c0, enrollment.C1)
 	if !proofValid {
 		err = errors.New("invalid proof")
 		return
@@ -44,12 +51,20 @@ func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (nc []by
 		return
 	}
 
-	t0 = c0.Add(hc0.ScalarMult(c.Y))
-	t1 = c1.Add(hc1.ScalarMult(c.Y)).Add(m.ScalarMult(c.Y))
+	t0 := c0.Add(hc0.ScalarMult(c.Y))
+	t1 := c1.Add(hc1.ScalarMult(c.Y)).Add(m.ScalarMult(c.Y))
+
+	rec = &ClientRecord{
+		NS: enrollment.NS,
+		NC: nc,
+		T0: t0.Marshal(),
+		T1: t1.Marshal(),
+	}
+
 	return
 }
 
-func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte) bool {
+func (c *Client) validateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte) bool {
 
 	if proof == nil {
 		return false
@@ -79,7 +94,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte
 		return false
 	}
 
-	res := new(big.Int).SetBytes(proof.BlindX)
+	blindX := new(big.Int).SetBytes(proof.BlindX)
 
 	hs0 := HashToPoint(nonce, dhs0)
 	hs1 := HashToPoint(nonce, dhs1)
@@ -90,7 +105,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte
 	// return False
 
 	t1 := term1.Add(c0.ScalarMult(challenge))
-	t2 := hs0.ScalarMult(res)
+	t2 := hs0.ScalarMult(blindX)
 
 	if !t1.Equal(t2) {
 		return false
@@ -100,7 +115,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte
 	// return False
 
 	t1 = term2.Add(c1.ScalarMult(challenge))
-	t2 = hs1.ScalarMult(res)
+	t2 = hs1.ScalarMult(blindX)
 
 	if !t1.Equal(t2) {
 		return false
@@ -115,7 +130,7 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte
 	// return False
 
 	t1 = term3.Add(pub.ScalarMult(challenge))
-	t2 = new(Point).ScalarBaseMult(res)
+	t2 = new(Point).ScalarBaseMult(blindX)
 
 	gf.FreeInt(hs0.X, hs0.Y)
 	gf.FreeInt(hs1.X, hs1.Y)
@@ -127,23 +142,38 @@ func (c *Client) ValidateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte
 	return true
 }
 
-func (c *Client) CreateVerifyPasswordRequest(nc, ns, password []byte, t0 *Point) (req *VerifyPasswordRequest) {
-	hc0 := HashToPoint(nc, password, dhc0)
+func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *ClientRecord) (req *VerifyPasswordRequest, err error) {
+
+	if rec == nil || len(rec.NC) == 0 || len(rec.NS) == 0 || len(rec.T0) == 0 {
+		return nil, errors.New("invalid client record")
+	}
+
+	hc0 := HashToPoint(rec.NC, password, dhc0)
 	minusY := gf.Neg(c.Y)
+
+	t0, err := PointUnmarshal(rec.T0)
+	if err != nil {
+		return nil, errors.New("invalid proof")
+	}
+
 	c0 := t0.Add(hc0.ScalarMult(minusY))
 	gf.FreeInt(hc0.X, hc0.Y)
 
 	req = &VerifyPasswordRequest{
 		C0: c0.Marshal(),
-		NS: ns,
+		NS: rec.NS,
 	}
 	return
 }
 
-func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte, res *VerifyPasswordResponse) (m *Point, err error) {
+func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, res *VerifyPasswordResponse) (key []byte, err error) {
 
 	if res == nil {
 		return nil, errors.New("invalid response")
+	}
+
+	if rec == nil || len(rec.NC) == 0 || len(rec.NS) == 0 || len(rec.T0) == 0 || len(rec.T1) == 0 {
+		return nil, errors.New("invalid client record")
 	}
 
 	c1, err := PointUnmarshal(res.C1)
@@ -155,21 +185,35 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 		return nil, errors.New("invalid response")
 	}
 
-	hc0 := HashToPoint(nc, password, dhc0)
-	hc1 := HashToPoint(nc, password, dhc1)
+	hc0 := HashToPoint(rec.NC, password, dhc0)
+	hc1 := HashToPoint(rec.NC, password, dhc1)
 
-	hs0 := HashToPoint(ns, dhs0)
+	hs0 := HashToPoint(rec.NS, dhs0)
 
 	//c0 = t0 * (hc0 ** (-self.y))
 
 	minusY := gf.Neg(c.Y)
 
+	t0, err := PointUnmarshal(rec.T0)
+	if err != nil {
+		return nil, errors.New("invalid proof")
+	}
+
+	t1, err := PointUnmarshal(rec.T1)
+	if err != nil {
+		return nil, errors.New("invalid proof")
+	}
+
 	c0 := t0.Add(hc0.ScalarMult(minusY))
 
-	if res.Res && c.ValidateProof(res.Proof, ns, c0, res.C1) {
+	if res.Res && c.validateProof(res.Proof, rec.NS, c0, res.C1) {
 		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
 
-		m = (t1.Add(c1.Neg()).Add(hc1.ScalarMult(minusY))).ScalarMult(gf.Inv(c.Y))
+		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMult(minusY))).ScalarMult(gf.Inv(c.Y))
+
+		kdf := hkdf.New(sha512.New512_256, m.Marshal(), nil, []byte("Secret"))
+		key = make([]byte, 32)
+		_, err = kdf.Read(key)
 
 		gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 
@@ -265,27 +309,44 @@ func (c *Client) Rotate(token *UpdateToken) error {
 	return nil
 }
 
-func (c *Client) Update(t0, t1 *Point, ns []byte, token *UpdateToken) (t00, t11 *Point, err error) {
+func (c *Client) Update(rec *ClientRecord, token *UpdateToken) (updRec *ClientRecord, err error) {
 
 	if token == nil {
-		return nil, nil, errors.New("invalid token")
+		return nil, errors.New("invalid token")
 	}
 	if len(token.A) == 0 || len(token.A) > 32 {
-		return nil, nil, errors.New("invalid update token")
+		return nil, errors.New("invalid update token")
 	}
 
 	a := new(big.Int).SetBytes(token.A)
 
 	if len(token.B) == 0 || len(token.B) > 32 {
-		return nil, nil, errors.New("invalid update token")
+		return nil, errors.New("invalid update token")
 	}
 
 	b := new(big.Int).SetBytes(token.B)
 
-	hs0 := HashToPoint(ns, dhs0)
-	hs1 := HashToPoint(ns, dhs1)
+	hs0 := HashToPoint(rec.NS, dhs0)
+	hs1 := HashToPoint(rec.NS, dhs1)
 
-	t00 = t0.ScalarMult(a).Add(hs0.ScalarMult(b))
-	t11 = t1.ScalarMult(a).Add(hs1.ScalarMult(b))
+	t0, err := PointUnmarshal(rec.T0)
+	if err != nil {
+		return nil, errors.New("invalid client record")
+	}
+
+	t1, err := PointUnmarshal(rec.T1)
+	if err != nil {
+		return nil, errors.New("invalid client record")
+	}
+
+	t00 := t0.ScalarMult(a).Add(hs0.ScalarMult(b))
+	t11 := t1.ScalarMult(a).Add(hs1.ScalarMult(b))
+
+	updRec = &ClientRecord{
+		T0: t00.Marshal(),
+		T1: t11.Marshal(),
+		NS: rec.NS,
+		NC: rec.NC,
+	}
 	return
 }

@@ -92,9 +92,7 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 	//password is invalid
 
 	r := RandomZ()
-
 	minusR := gf.Neg(r)
-
 	minusRX := gf.Mul(minusR, s.X)
 
 	c1 := c0.ScalarMult(r).Add(hs0.ScalarMult(minusRX))
