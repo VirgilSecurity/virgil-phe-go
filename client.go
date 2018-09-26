@@ -13,10 +13,16 @@ type Client struct {
 
 func (c *Client) EnrollAccount(password, ns []byte, c0, c1 *Point, proof *Proof) (nc []byte, m, t0, t1 *Point, err error) {
 	nc = make([]byte, 32)
-	rand.Read(nc)
+	_, err = rand.Read(nc)
+	if err != nil {
+		panic(err)
+	}
 
 	mBuf := make([]byte, 32)
-	rand.Read(mBuf)
+	_, err = rand.Read(mBuf)
+	if err != nil {
+		panic(err)
+	}
 	m = HashToPoint(mBuf, dm)
 
 	hc0 := HashToPoint(nc, password, dhc0)
@@ -105,7 +111,8 @@ func (c *Client) CheckResponseAndDecrypt(t0, t1 *Point, password, ns, nc []byte,
 
 		return
 
-	} else {
+	}
+	{
 		challenge := HashZ(c.ServerPublicKey.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), proof.Term1.Marshal(), proof.Term2.Marshal(), proof.Term3.Marshal(), proof.Term4.Marshal(), proofError)
 		//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
 		//return False

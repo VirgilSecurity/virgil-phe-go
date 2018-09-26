@@ -54,7 +54,7 @@ func Test_PHE(t *testing.T) {
 	assert.True(t, m.Equal(mDec))
 
 	//rotation
-	a, b, pub := s.Rotate()
+	a, b, _, pub := s.Rotate()
 	c.Rotate(a, pub)
 	t0, t1 = c.Update(t0, t1, ns, a, b)
 

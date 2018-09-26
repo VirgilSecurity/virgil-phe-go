@@ -34,14 +34,19 @@ type Proof struct {
 func RandomZ() (z *big.Int) {
 
 	rr := rand.Reader
-	rz, _ := rand.Int(rr, maxZ)
+	rz, err := rand.Int(rr, maxZ)
+	if err != nil {
+		panic(err)
+	}
 
 	for z == nil {
 		// If the scalar is out of range, sample another random number.
 
 		if rz.Cmp(curve.Params().N) >= 0 {
-			rz, _ = rand.Int(rr, maxZ)
-
+			rz, err = rand.Int(rr, maxZ)
+			if err != nil {
+				panic(err)
+			}
 		} else {
 			z = rz
 		}
@@ -54,12 +59,18 @@ func HashZ(data ...[]byte) (z *big.Int) {
 		panic(data)
 	}
 	xof := sha3.TupleHashXOF256(data[:len(data)-1], data[len(data)-1])
-	rz, _ := rand.Int(xof, maxZ)
+	rz, err := rand.Int(xof, maxZ)
+	if err != nil {
+		panic(err)
+	}
 
 	for z == nil {
 		// If the scalar is out of range, sample another  number.
 		if rz.Cmp(curve.Params().N) >= 0 {
-			rz, _ = rand.Int(xof, maxZ)
+			rz, err = rand.Int(xof, maxZ)
+			if err != nil {
+				panic(err)
+			}
 		} else {
 			z = rz
 		}
