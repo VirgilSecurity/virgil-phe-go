@@ -22,9 +22,8 @@ func NewServer(key []byte) (*Server, error) {
 
 // GenerateServer creates new server instance and generates a private key for it
 func GenerateServer() (*Server, error) {
-	return &Server{
-		X: RandomZ(),
-	}, nil
+	x := RandomZ()
+	return NewServer(x.Bytes())
 }
 
 func (s *Server) GetEnrollment() *Enrollment {
