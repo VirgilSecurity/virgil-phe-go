@@ -59,7 +59,9 @@ func Test_PHE(t *testing.T) {
 
 	//rotation
 	token, _ := s.Rotate()
-	c.Rotate(token)
+	err = c.Rotate(token)
+	assert.NoError(t, err)
+	assert.Equal(t, c.ServerPublicKey, s.GetPublicKey())
 	rec1, err := c.Update(rec, token)
 	assert.NoError(t, err)
 	//Check password request
@@ -74,8 +76,6 @@ func Test_PHE(t *testing.T) {
 	assert.NoError(t, err)
 	// decrypted m must be the same as original
 	assert.Equal(t, key, keyDec)
-
-	assert.Equal(t, c.ServerPublicKey, s.GetPublicKey())
 
 }
 
