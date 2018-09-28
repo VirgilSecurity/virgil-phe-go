@@ -75,6 +75,8 @@ func Test_PHE(t *testing.T) {
 	// decrypted m must be the same as original
 	assert.Equal(t, key, keyDec)
 
+	assert.Equal(t, c.ServerPublicKey, s.GetPublicKey())
+
 }
 
 func Test_PHE_InvalidPassword(t *testing.T) {
