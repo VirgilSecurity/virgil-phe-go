@@ -45,6 +45,7 @@ func Test_PHE(t *testing.T) {
 
 	//Check password request
 	req, err := c.CreateVerifyPasswordRequest(pwd, rec)
+	assert.NoError(t, err)
 	//Check password on server
 	res, err := s.VerifyPassword(req)
 

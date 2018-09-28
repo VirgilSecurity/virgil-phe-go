@@ -172,13 +172,11 @@ func (s *Server) prove(hs0, hs1, c0, c1 *Point) *Proof {
 func (s *Server) Rotate() (token *UpdateToken, newPrivate []byte) {
 	a, b := RandomZ(), RandomZ()
 	s.X = gf.Add(gf.Mul(a, s.X), b)
-	newPub := s.GetPublicKey()
 	newPrivate = s.X.Bytes()
 
 	token = &UpdateToken{
-		A:            a.Bytes(),
-		B:            b.Bytes(),
-		NewPublicKey: newPub,
+		A: a.Bytes(),
+		B: b.Bytes(),
 	}
 	return
 }

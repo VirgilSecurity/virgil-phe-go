@@ -21,9 +21,8 @@ type Proof struct {
 
 // UpdateToken contains values needed for value rotation
 type UpdateToken struct {
-	A            []byte `json:"a"`
-	B            []byte `json:"b"`
-	NewPublicKey []byte `json:"new_public_key"`
+	A []byte `json:"a"`
+	B []byte `json:"b"`
 }
 
 type Enrollment struct {

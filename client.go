@@ -297,15 +297,21 @@ func (c *Client) Rotate(token *UpdateToken) error {
 		return errors.New("invalid update token")
 	}
 
-	a := new(big.Int).SetBytes(token.A)
-
-	_, err := PointUnmarshal(token.NewPublicKey)
-	if err != nil {
+	if len(token.B) == 0 || len(token.B) > 32 {
 		return errors.New("invalid update token")
 	}
 
+	a := new(big.Int).SetBytes(token.A)
+	b := new(big.Int).SetBytes(token.B)
+
 	c.Y = gf.Mul(c.Y, a)
-	c.ServerPublicKey = token.NewPublicKey
+
+	pub, err := PointUnmarshal(c.ServerPublicKey)
+	if err != nil {
+		return errors.New("invalid server public key")
+	}
+	pub = pub.ScalarMult(a).Add(new(Point).ScalarBaseMult(b))
+	c.ServerPublicKey = pub.Marshal()
 	return nil
 }
 
