@@ -33,7 +33,7 @@ func (s *Server) GetEnrollment() *Enrollment {
 		panic(err)
 	}
 	hs0, hs1, c0, c1 := s.eval(ns)
-	proof := s.prove(hs0, hs1, c0, c1)
+	proof := s.proveSuccess(hs0, hs1, c0, c1)
 	return &Enrollment{
 		NS:    ns,
 		C0:    c0.Marshal(),
@@ -79,9 +79,9 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 		c1 := hs1.ScalarMult(s.X)
 
 		response = &VerifyPasswordResponse{
-			Res:   true,
-			C1:    c1.Marshal(),
-			Proof: s.prove(hs0, hs1, c0, c1),
+			Res:          true,
+			C1:           c1.Marshal(),
+			ProofSuccess: s.proveSuccess(hs0, hs1, c0, c1),
 		}
 
 		gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
@@ -122,7 +122,7 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 	response = &VerifyPasswordResponse{
 		Res: false,
 		C1:  c1.Marshal(),
-		Proof: &Proof{
+		ProofFail: &ProofOfFail{
 			Term1:  term1.Marshal(),
 			Term2:  term2.Marshal(),
 			Term3:  term3.Marshal(),
@@ -147,7 +147,7 @@ func (s *Server) eval(ns []byte) (hs0, hs1, c0, c1 *Point) {
 	return
 }
 
-func (s *Server) prove(hs0, hs1, c0, c1 *Point) *Proof {
+func (s *Server) proveSuccess(hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 	blindX := RandomZ()
 
 	term1 := hs0.ScalarMult(blindX)
@@ -160,7 +160,7 @@ func (s *Server) prove(hs0, hs1, c0, c1 *Point) *Proof {
 	challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), proofOk)
 	res := gf.Add(blindX, gf.Mul(challenge, s.X))
 
-	return &Proof{
+	return &ProofOfSuccess{
 		Term1:  term1.Marshal(),
 		Term2:  term2.Marshal(),
 		Term3:  term3.Marshal(),

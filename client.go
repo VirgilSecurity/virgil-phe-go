@@ -64,23 +64,10 @@ func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (rec *Cl
 	return
 }
 
-func (c *Client) validateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte) bool {
+func (c *Client) validateProof(proof *ProofOfSuccess, nonce []byte, c0 *Point, c1b []byte) bool {
 
-	if proof == nil {
-		return false
-	}
+	term1, term2, term3, blindX, err := proof.Parse()
 
-	term1, err := PointUnmarshal(proof.Term1)
-	if err != nil {
-		return false
-	}
-
-	term2, err := PointUnmarshal(proof.Term2)
-	if err != nil {
-		return false
-	}
-
-	term3, err := PointUnmarshal(proof.Term3)
 	if err != nil {
 		return false
 	}
@@ -89,12 +76,6 @@ func (c *Client) validateProof(proof *Proof, nonce []byte, c0 *Point, c1b []byte
 	if err != nil {
 		return false
 	}
-
-	if len(proof.BlindX) == 0 || len(proof.BlindX) > 32 {
-		return false
-	}
-
-	blindX := new(big.Int).SetBytes(proof.BlindX)
 
 	hs0 := HashToPoint(nonce, dhs0)
 	hs1 := HashToPoint(nonce, dhs1)
@@ -166,23 +147,20 @@ func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *ClientRecord)
 	return
 }
 
-func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, res *VerifyPasswordResponse) (key []byte, err error) {
+func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, resp *VerifyPasswordResponse) (key []byte, err error) {
 
-	if res == nil {
+	if resp == nil {
 		return nil, errors.New("invalid response")
 	}
 
-	if rec == nil || len(rec.NC) == 0 || len(rec.NS) == 0 || len(rec.T0) == 0 || len(rec.T1) == 0 {
-		return nil, errors.New("invalid client record")
+	t0, t1, err := rec.Parse()
+	if err != nil {
+		return nil, errors.New("invalid record")
 	}
 
-	c1, err := PointUnmarshal(res.C1)
+	c1, err := PointUnmarshal(resp.C1)
 	if err != nil {
 		return nil, err
-	}
-
-	if res.Proof == nil {
-		return nil, errors.New("invalid response")
 	}
 
 	hc0 := HashToPoint(rec.NC, password, dhc0)
@@ -194,19 +172,9 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, res
 
 	minusY := gf.Neg(c.Y)
 
-	t0, err := PointUnmarshal(rec.T0)
-	if err != nil {
-		return nil, errors.New("invalid proof")
-	}
-
-	t1, err := PointUnmarshal(rec.T1)
-	if err != nil {
-		return nil, errors.New("invalid proof")
-	}
-
 	c0 := t0.Add(hc0.ScalarMult(minusY))
 
-	if res.Res && c.validateProof(res.Proof, rec.NS, c0, res.C1) {
+	if resp.Res && c.validateProof(resp.ProofSuccess, rec.NS, c0, resp.C1) {
 		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
 
 		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMult(minusY))).ScalarMult(gf.Inv(c.Y))
@@ -222,24 +190,9 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, res
 	}
 	{
 
-		term1, err := PointUnmarshal(res.Proof.Term1)
+		term1, term2, term3, term4, blindA, blindB, err := resp.ProofFail.Parse()
 		if err != nil {
-			return nil, errors.New("invalid proof")
-		}
-
-		term2, err := PointUnmarshal(res.Proof.Term2)
-		if err != nil {
-			return nil, errors.New("invalid proof")
-		}
-
-		term3, err := PointUnmarshal(res.Proof.Term3)
-		if err != nil {
-			return nil, errors.New("invalid proof")
-		}
-
-		term4, err := PointUnmarshal(res.Proof.Term4)
-		if err != nil {
-			return nil, errors.New("invalid proof")
+			return nil, errors.New("invalid public key")
 		}
 
 		pub, err := PointUnmarshal(c.ServerPublicKey)
@@ -247,18 +200,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, res
 			return nil, errors.New("invalid public key")
 		}
 
-		if len(res.Proof.BlindA) == 0 || len(res.Proof.BlindA) > 32 {
-			return nil, errors.New("invalid proof")
-		}
-
-		if len(res.Proof.BlindB) == 0 || len(res.Proof.BlindB) > 32 {
-			return nil, errors.New("invalid proof")
-		}
-
-		blindA := new(big.Int).SetBytes(res.Proof.BlindA)
-		blindB := new(big.Int).SetBytes(res.Proof.BlindB)
-
-		challenge := HashZ(c.ServerPublicKey, curveG.Marshal(), c0.Marshal(), res.C1, res.Proof.Term1, res.Proof.Term2, res.Proof.Term3, res.Proof.Term4, proofError)
+		challenge := HashZ(c.ServerPublicKey, curveG.Marshal(), c0.Marshal(), resp.C1, resp.ProofFail.Term1, resp.ProofFail.Term2, resp.ProofFail.Term3, resp.ProofFail.Term4, proofError)
 		//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
 		//return False
 		//
