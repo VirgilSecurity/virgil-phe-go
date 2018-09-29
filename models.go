@@ -36,10 +36,10 @@ func (c *EnrollmentRecord) Parse() (t0, t1 *Point, err error) {
 
 // ProofOfSuccess contains data for client to validate
 type ProofOfSuccess struct {
-	Term1  []byte `json:"term_1,omitempty"`
-	Term2  []byte `json:"term_2,omitempty"`
-	Term3  []byte `json:"term_3,omitempty"`
-	BlindX []byte `json:"blind_x,omitempty"`
+	Term1  []byte `json:"term_1"`
+	Term2  []byte `json:"term_2"`
+	Term3  []byte `json:"term_3"`
+	BlindX []byte `json:"blind_x"`
 }
 
 func (p *ProofOfSuccess) Parse() (term1, term2, term3 *Point, blindX *big.Int, err error) {
@@ -74,12 +74,12 @@ func (p *ProofOfSuccess) Parse() (term1, term2, term3 *Point, blindX *big.Int, e
 
 // ProofOfFail contains data for client to validate
 type ProofOfFail struct {
-	Term1  []byte `json:"term_1,omitempty"`
-	Term2  []byte `json:"term_2,omitempty"`
-	Term3  []byte `json:"term_3,omitempty"`
-	Term4  []byte `json:"term_4,omitempty"`
-	BlindA []byte `json:"blind_a,omitempty"`
-	BlindB []byte `json:"blind_b,omitempty"`
+	Term1  []byte `json:"term_1"`
+	Term2  []byte `json:"term_2"`
+	Term3  []byte `json:"term_3"`
+	Term4  []byte `json:"term_4"`
+	BlindA []byte `json:"blind_a"`
+	BlindB []byte `json:"blind_b"`
 }
 
 func (p *ProofOfFail) Parse() (term1, term2, term3, term4 *Point, blindA, blindB *big.Int, err error) {
