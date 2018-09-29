@@ -61,6 +61,7 @@ func Test_PHE(t *testing.T) {
 	token, _ := s.Rotate()
 	err = c.Rotate(token)
 	assert.NoError(t, err)
+	//rotated public key must be the same as on server
 	assert.Equal(t, c.ServerPublicKey, s.GetPublicKey())
 	rec1, err := c.Update(rec, token)
 	assert.NoError(t, err)

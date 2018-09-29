@@ -26,7 +26,7 @@ func GenerateServer() (*Server, error) {
 	return NewServer(x.Bytes())
 }
 
-func (s *Server) GetEnrollment() *Enrollment {
+func (s *Server) GetEnrollment() *EnrollmentResponse {
 	ns := make([]byte, 32)
 	_, err := rand.Read(ns)
 	if err != nil {
@@ -34,7 +34,7 @@ func (s *Server) GetEnrollment() *Enrollment {
 	}
 	hs0, hs1, c0, c1 := s.eval(ns)
 	proof := s.proveSuccess(hs0, hs1, c0, c1)
-	return &Enrollment{
+	return &EnrollmentResponse{
 		NS:    ns,
 		C0:    c0.Marshal(),
 		C1:    c1.Marshal(),
@@ -91,45 +91,12 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 
 	//password is invalid
 
-	r := RandomZ()
-	minusR := gf.Neg(r)
-	minusRX := gf.Mul(minusR, s.X)
-
-	c1 := c0.ScalarMult(r).Add(hs0.ScalarMult(minusRX))
-
-	a := r
-	b := minusRX
-
-	blindA := RandomZ()
-	blindB := RandomZ()
-
-	X := new(Point).ScalarBaseMult(s.X)
-
-	// I = (self.X ** a) * (self.G ** b)
-	// term1 = c0     ** blind_a
-	// term2 = hs0    ** blind_b
-	// term3 = self.X ** blind_a
-	// term4 = self.G ** blind_b
-
-	term1 := c0.ScalarMult(blindA)
-	term2 := hs0.ScalarMult(blindB)
-	term3 := X.ScalarMult(blindA)
-	term4 := new(Point).ScalarBaseMult(blindB)
-
-	pub := new(Point).ScalarBaseMult(s.X)
-	challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
+	c1, proof := s.proveFailure(c0, hs0)
 
 	response = &VerifyPasswordResponse{
-		Res: false,
-		C1:  c1.Marshal(),
-		ProofFail: &ProofOfFail{
-			Term1:  term1.Marshal(),
-			Term2:  term2.Marshal(),
-			Term3:  term3.Marshal(),
-			Term4:  term4.Marshal(),
-			BlindA: gf.Add(blindA, gf.Mul(challenge, a)).Bytes(),
-			BlindB: gf.Add(blindB, gf.Mul(challenge, b)).Bytes(),
-		},
+		Res:       true,
+		C1:        c1.Marshal(),
+		ProofFail: proof,
 	}
 
 	gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
@@ -167,6 +134,45 @@ func (s *Server) proveSuccess(hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 		BlindX: res.Bytes(),
 	}
 
+}
+
+func (s *Server) proveFailure(c0, hs0 *Point) (c1 *Point, proof *ProofOfFail) {
+	r := RandomZ()
+	minusR := gf.Neg(r)
+	minusRX := gf.Mul(minusR, s.X)
+
+	c1 = c0.ScalarMult(r).Add(hs0.ScalarMult(minusRX))
+
+	a := r
+	b := minusRX
+
+	blindA := RandomZ()
+	blindB := RandomZ()
+
+	X := new(Point).ScalarBaseMult(s.X)
+
+	// I = (self.X ** a) * (self.G ** b)
+	// term1 = c0     ** blind_a
+	// term2 = hs0    ** blind_b
+	// term3 = self.X ** blind_a
+	// term4 = self.G ** blind_b
+
+	term1 := c0.ScalarMult(blindA)
+	term2 := hs0.ScalarMult(blindB)
+	term3 := X.ScalarMult(blindA)
+	term4 := new(Point).ScalarBaseMult(blindB)
+
+	pub := new(Point).ScalarBaseMult(s.X)
+	challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
+
+	return c1, &ProofOfFail{
+		Term1:  term1.Marshal(),
+		Term2:  term2.Marshal(),
+		Term3:  term3.Marshal(),
+		Term4:  term4.Marshal(),
+		BlindA: gf.Add(blindA, gf.Mul(challenge, a)).Bytes(),
+		BlindB: gf.Add(blindB, gf.Mul(challenge, b)).Bytes(),
+	}
 }
 
 func (s *Server) Rotate() (token *UpdateToken, newPrivate []byte) {

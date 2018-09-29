@@ -6,15 +6,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-//ClientRecord stores all necessary password protection info
-type ClientRecord struct {
+//EnrollmentRecord stores all necessary password protection info
+type EnrollmentRecord struct {
 	NS []byte `json:"ns"`
 	NC []byte `json:"nc"`
 	T0 []byte `json:"t_0"`
 	T1 []byte `json:"t_1"`
 }
 
-func (c *ClientRecord) Parse() (t0, t1 *Point, err error) {
+func (c *EnrollmentRecord) Parse() (t0, t1 *Point, err error) {
 
 	if c == nil || len(c.NC) == 0 || len(c.NS) == 0 || len(c.T0) == 0 || len(c.T1) == 0 {
 		err = errors.New("invalid record")
@@ -129,7 +129,7 @@ type UpdateToken struct {
 	B []byte `json:"b"`
 }
 
-type Enrollment struct {
+type EnrollmentResponse struct {
 	NS    []byte          `json:"ns"`
 	C0    []byte          `json:"c_0"`
 	C1    []byte          `json:"c_1"`

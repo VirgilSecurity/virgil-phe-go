@@ -14,7 +14,7 @@ type Client struct {
 	ServerPublicKey []byte
 }
 
-func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (rec *ClientRecord, key []byte, err error) {
+func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *EnrollmentRecord, key []byte, err error) {
 	nc := make([]byte, 32)
 	_, err = rand.Read(nc)
 	if err != nil {
@@ -35,18 +35,18 @@ func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (rec *Cl
 	hc0 := HashToPoint(nc, password, dhc0)
 	hc1 := HashToPoint(nc, password, dhc1)
 
-	c0, err := PointUnmarshal(enrollment.C0)
+	c0, err := PointUnmarshal(resp.C0)
 	if err != nil {
 		return
 	}
 
-	proofValid := c.validateProof(enrollment.Proof, enrollment.NS, c0, enrollment.C1)
+	proofValid := c.validateProofOfSuccess(resp.Proof, resp.NS, c0, resp.C1)
 	if !proofValid {
 		err = errors.New("invalid proof")
 		return
 	}
 
-	c1, err := PointUnmarshal(enrollment.C1)
+	c1, err := PointUnmarshal(resp.C1)
 	if err != nil {
 		return
 	}
@@ -54,8 +54,8 @@ func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (rec *Cl
 	t0 := c0.Add(hc0.ScalarMult(c.Y))
 	t1 := c1.Add(hc1.ScalarMult(c.Y)).Add(m.ScalarMult(c.Y))
 
-	rec = &ClientRecord{
-		NS: enrollment.NS,
+	rec = &EnrollmentRecord{
+		NS: resp.NS,
 		NC: nc,
 		T0: t0.Marshal(),
 		T1: t1.Marshal(),
@@ -64,7 +64,7 @@ func (c *Client) EnrollAccount(password []byte, enrollment *Enrollment) (rec *Cl
 	return
 }
 
-func (c *Client) validateProof(proof *ProofOfSuccess, nonce []byte, c0 *Point, c1b []byte) bool {
+func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 *Point, c1b []byte) bool {
 
 	term1, term2, term3, blindX, err := proof.Parse()
 
@@ -123,7 +123,7 @@ func (c *Client) validateProof(proof *ProofOfSuccess, nonce []byte, c0 *Point, c
 	return true
 }
 
-func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *ClientRecord) (req *VerifyPasswordRequest, err error) {
+func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRecord) (req *VerifyPasswordRequest, err error) {
 
 	if rec == nil || len(rec.NC) == 0 || len(rec.NS) == 0 || len(rec.T0) == 0 {
 		return nil, errors.New("invalid client record")
@@ -147,7 +147,7 @@ func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *ClientRecord)
 	return
 }
 
-func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, resp *VerifyPasswordResponse) (key []byte, err error) {
+func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord, resp *VerifyPasswordResponse) (key []byte, err error) {
 
 	if resp == nil {
 		return nil, errors.New("invalid response")
@@ -174,7 +174,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, res
 
 	c0 := t0.Add(hc0.ScalarMult(minusY))
 
-	if resp.Res && c.validateProof(resp.ProofSuccess, rec.NS, c0, resp.C1) {
+	if resp.Res && c.validateProofOfSuccess(resp.ProofSuccess, rec.NS, c0, resp.C1) {
 		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
 
 		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMult(minusY))).ScalarMult(gf.Inv(c.Y))
@@ -188,46 +188,48 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *ClientRecord, res
 		return
 
 	}
-	{
 
-		term1, term2, term3, term4, blindA, blindB, err := resp.ProofFail.Parse()
-		if err != nil {
-			return nil, errors.New("invalid public key")
-		}
-
-		pub, err := PointUnmarshal(c.ServerPublicKey)
-		if err != nil {
-			return nil, errors.New("invalid public key")
-		}
-
-		challenge := HashZ(c.ServerPublicKey, curveG.Marshal(), c0.Marshal(), resp.C1, resp.ProofFail.Term1, resp.ProofFail.Term2, resp.ProofFail.Term3, resp.ProofFail.Term4, proofError)
-		//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
-		//return False
-		//
-		//if term3 * term4 * (I ** challenge) != (self.X ** blind_a) * (self.G ** blind_b):
-		//return False
-
-		t1 := term1.Add(term2).Add(c1.ScalarMult(challenge))
-		t2 := c0.ScalarMult(blindA).Add(hs0.ScalarMult(blindB))
-
-		if !t1.Equal(t2) {
-			gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
-			return nil, errors.New("proof verification failed")
-		}
-
-		t1 = term3.Add(term4)
-		t2 = pub.ScalarMult(blindA).Add(new(Point).ScalarBaseMult(blindB))
-
-		if !t1.Equal(t2) {
-			gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
-			return nil, errors.New("verification failed")
-		}
-
-	}
+	err = c.validateProofOfFail(resp, c0, c1, hs0, hc0, hc1)
 
 	gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 
-	return nil, nil
+	return nil, err
+}
+
+func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, hc0, hc1 *Point) error {
+	term1, term2, term3, term4, blindA, blindB, err := resp.ProofFail.Parse()
+	if err != nil {
+		return errors.New("invalid public key")
+	}
+
+	pub, err := PointUnmarshal(c.ServerPublicKey)
+	if err != nil {
+		return errors.New("invalid public key")
+	}
+
+	challenge := HashZ(c.ServerPublicKey, curveG.Marshal(), c0.Marshal(), resp.C1, resp.ProofFail.Term1, resp.ProofFail.Term2, resp.ProofFail.Term3, resp.ProofFail.Term4, proofError)
+	//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
+	//return False
+	//
+	//if term3 * term4 * (I ** challenge) != (self.X ** blind_a) * (self.G ** blind_b):
+	//return False
+
+	t1 := term1.Add(term2).Add(c1.ScalarMult(challenge))
+	t2 := c0.ScalarMult(blindA).Add(hs0.ScalarMult(blindB))
+
+	if !t1.Equal(t2) {
+		gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
+		return errors.New("proof verification failed")
+	}
+
+	t1 = term3.Add(term4)
+	t2 = pub.ScalarMult(blindA).Add(new(Point).ScalarBaseMult(blindB))
+
+	if !t1.Equal(t2) {
+		gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
+		return errors.New("verification failed")
+	}
+	return nil
 }
 
 func (c *Client) Rotate(token *UpdateToken) error {
@@ -257,7 +259,7 @@ func (c *Client) Rotate(token *UpdateToken) error {
 	return nil
 }
 
-func (c *Client) Update(rec *ClientRecord, token *UpdateToken) (updRec *ClientRecord, err error) {
+func (c *Client) Update(rec *EnrollmentRecord, token *UpdateToken) (updRec *EnrollmentRecord, err error) {
 
 	if token == nil {
 		return nil, errors.New("invalid token")
@@ -290,7 +292,7 @@ func (c *Client) Update(rec *ClientRecord, token *UpdateToken) (updRec *ClientRe
 	t00 := t0.ScalarMult(a).Add(hs0.ScalarMult(b))
 	t11 := t1.ScalarMult(a).Add(hs1.ScalarMult(b))
 
-	updRec = &ClientRecord{
+	updRec = &EnrollmentRecord{
 		T0: t00.Marshal(),
 		T1: t11.Marshal(),
 		NS: rec.NS,
