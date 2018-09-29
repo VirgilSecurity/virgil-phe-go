@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
-	"github.com/Scratch-net/SWU"
+	"github.com/Scratch-net/PHE/swu"
 	"golang.org/x/crypto/sha3"
 )
 

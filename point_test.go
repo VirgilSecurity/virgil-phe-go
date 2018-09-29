@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/Scratch-net/SWU"
+	"github.com/Scratch-net/PHE/swu"
 	"github.com/stretchr/testify/assert"
 )
 
