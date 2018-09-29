@@ -174,7 +174,12 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 
 	c0 := t0.Add(hc0.ScalarMult(minusY))
 
-	if resp.Res && c.validateProofOfSuccess(resp.ProofSuccess, rec.NS, c0, resp.C1) {
+	if resp.Res {
+
+		if !c.validateProofOfSuccess(resp.ProofSuccess, rec.NS, c0, resp.C1) {
+			return nil, errors.New("result is ok but proof is invalid")
+		}
+
 		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
 
 		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMult(minusY))).ScalarMult(gf.Inv(c.Y))

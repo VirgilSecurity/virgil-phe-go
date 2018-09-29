@@ -94,7 +94,7 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 	c1, proof := s.proveFailure(c0, hs0)
 
 	response = &VerifyPasswordResponse{
-		Res:       true,
+		Res:       false,
 		C1:        c1.Marshal(),
 		ProofFail: proof,
 	}
