@@ -113,9 +113,6 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 	t1 = term3.Add(pub.ScalarMult(challenge))
 	t2 = new(Point).ScalarBaseMult(blindX)
 
-	gf.FreeInt(hs0.X, hs0.Y)
-	gf.FreeInt(hs1.X, hs1.Y)
-
 	if !t1.Equal(t2) {
 		return false
 	}
@@ -138,8 +135,6 @@ func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRec
 	}
 
 	c0 := t0.Add(hc0.ScalarMult(minusY))
-	gf.FreeInt(hc0.X, hc0.Y)
-
 	req = &VerifyPasswordRequest{
 		C0: c0.Marshal(),
 		NS: rec.NS,
@@ -188,15 +183,11 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 		key = make([]byte, 32)
 		_, err = kdf.Read(key)
 
-		gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
-
 		return
 
 	}
 
 	err = c.validateProofOfFail(resp, c0, c1, hs0, hc0, hc1)
-
-	gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 
 	return nil, err
 }
@@ -223,7 +214,6 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 	t2 := c0.ScalarMult(blindA).Add(hs0.ScalarMult(blindB))
 
 	if !t1.Equal(t2) {
-		gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 		return errors.New("proof verification failed")
 	}
 
@@ -231,7 +221,6 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 	t2 = pub.ScalarMult(blindA).Add(new(Point).ScalarBaseMult(blindB))
 
 	if !t1.Equal(t2) {
-		gf.FreeInt(hs0.X, hs0.Y, hc0.X, hc0.Y, hc1.X, hc1.Y)
 		return errors.New("verification failed")
 	}
 	return nil

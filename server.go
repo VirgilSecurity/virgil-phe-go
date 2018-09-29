@@ -83,9 +83,6 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 			C1:           c1.Marshal(),
 			ProofSuccess: s.proveSuccess(hs0, hs1, c0, c1),
 		}
-
-		gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
-
 		return
 	}
 
@@ -99,7 +96,6 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 		ProofFail: proof,
 	}
 
-	gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
 	return
 }
 
@@ -109,8 +105,6 @@ func (s *Server) eval(ns []byte) (hs0, hs1, c0, c1 *Point) {
 
 	c0 = hs0.ScalarMult(s.X)
 	c1 = hs1.ScalarMult(s.X)
-
-	gf.FreeInt(hs0.X, hs0.Y, hs1.X, hs1.Y)
 	return
 }
 
