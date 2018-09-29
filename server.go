@@ -52,12 +52,7 @@ func (s *Server) GetPrivateKey() []byte {
 
 func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPasswordResponse, err error) {
 
-	if req == nil {
-		err = errors.New("Invalid password verify request")
-		return
-	}
-
-	if len(req.NS) > 32 || len(req.NS) == 0 {
+	if req == nil || len(req.NS) > 32 || len(req.NS) == 0 {
 		err = errors.New("Invalid password verify request")
 		return
 	}
@@ -65,7 +60,6 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 	ns := req.NS
 
 	c0, err := PointUnmarshal(req.C0)
-
 	if err != nil {
 		return
 	}

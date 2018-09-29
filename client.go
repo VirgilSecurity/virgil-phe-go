@@ -228,19 +228,10 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 
 func (c *Client) Rotate(token *UpdateToken) error {
 
-	if token == nil {
-		return errors.New("invalid token")
+	a, b, err := token.Parse()
+	if err != nil {
+		return err
 	}
-	if len(token.A) == 0 || len(token.A) > 32 {
-		return errors.New("invalid update token")
-	}
-
-	if len(token.B) == 0 || len(token.B) > 32 {
-		return errors.New("invalid update token")
-	}
-
-	a := new(big.Int).SetBytes(token.A)
-	b := new(big.Int).SetBytes(token.B)
 
 	c.Y = gf.Mul(c.Y, a)
 
@@ -255,33 +246,18 @@ func (c *Client) Rotate(token *UpdateToken) error {
 
 func (c *Client) Update(rec *EnrollmentRecord, token *UpdateToken) (updRec *EnrollmentRecord, err error) {
 
-	if token == nil {
-		return nil, errors.New("invalid token")
-	}
-	if len(token.A) == 0 || len(token.A) > 32 {
-		return nil, errors.New("invalid update token")
+	a, b, err := token.Parse()
+	if err != nil {
+		return nil, err
 	}
 
-	a := new(big.Int).SetBytes(token.A)
-
-	if len(token.B) == 0 || len(token.B) > 32 {
-		return nil, errors.New("invalid update token")
+	t0, t1, err := rec.Parse()
+	if err != nil {
+		return nil, err
 	}
-
-	b := new(big.Int).SetBytes(token.B)
 
 	hs0 := HashToPoint(rec.NS, dhs0)
 	hs1 := HashToPoint(rec.NS, dhs1)
-
-	t0, err := PointUnmarshal(rec.T0)
-	if err != nil {
-		return nil, errors.New("invalid client record")
-	}
-
-	t1, err := PointUnmarshal(rec.T1)
-	if err != nil {
-		return nil, errors.New("invalid client record")
-	}
 
 	t00 := t0.ScalarMult(a).Add(hs0.ScalarMult(b))
 	t11 := t1.ScalarMult(a).Add(hs1.ScalarMult(b))

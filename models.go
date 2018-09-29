@@ -16,7 +16,8 @@ type EnrollmentRecord struct {
 
 func (c *EnrollmentRecord) Parse() (t0, t1 *Point, err error) {
 
-	if c == nil || len(c.NC) == 0 || len(c.NS) == 0 || len(c.T0) == 0 || len(c.T1) == 0 {
+	if c == nil || len(c.NC) == 0 || len(c.NS) == 0 || len(c.T0) == 0 || len(c.T1) == 0 || len(c.NC) > 32 ||
+		len(c.NS) > 32 || len(c.T0) > 65 || len(c.T1) > 65 {
 		err = errors.New("invalid record")
 		return
 	}
@@ -127,6 +128,22 @@ func (p *ProofOfFail) Parse() (term1, term2, term3, term4 *Point, blindA, blindB
 type UpdateToken struct {
 	A []byte `json:"a"`
 	B []byte `json:"b"`
+}
+
+func (t *UpdateToken) Parse() (a, b *big.Int, err error) {
+	if t == nil {
+		return nil, nil, errors.New("invalid token")
+	}
+	if len(t.A) == 0 || len(t.A) > 32 {
+		return nil, nil, errors.New("invalid update token")
+	}
+	if len(t.B) == 0 || len(t.B) > 32 {
+		return nil, nil, errors.New("invalid update token")
+	}
+
+	a = new(big.Int).SetBytes(t.A)
+	b = new(big.Int).SetBytes(t.B)
+	return
 }
 
 type EnrollmentResponse struct {
