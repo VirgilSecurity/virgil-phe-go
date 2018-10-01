@@ -9,11 +9,15 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+// Client is responsible for protecting & checking passwords at the client (website) side
 type Client struct {
 	Y               *big.Int
 	ServerPublicKey []byte
 }
 
+// EnrollAccount uses fresh Enrollment Response and user's password (or its hash) to create a new Enrollment Record which
+// is then supposed to be stored in a database
+// it also generates a random encryption key which can be used to protect user's data
 func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *EnrollmentRecord, key []byte, err error) {
 	nc := make([]byte, 32)
 	_, err = rand.Read(nc)
@@ -120,6 +124,7 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 	return true
 }
 
+//CreateVerifyPasswordRequest creates a request in a form of elliptic curve point which is then need to be validated at the server side
 func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRecord) (req *VerifyPasswordRequest, err error) {
 
 	if rec == nil || len(rec.NC) == 0 || len(rec.NS) == 0 || len(rec.T0) == 0 {
@@ -142,6 +147,7 @@ func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRec
 	return
 }
 
+// CheckResponseAndDecrypt verifies server's answer and extracts data encryption key on success
 func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord, resp *VerifyPasswordResponse) (key []byte, err error) {
 
 	if resp == nil {
@@ -226,6 +232,7 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 	return nil
 }
 
+// Rotate updates client's secret key and server's public key with server's update token
 func (c *Client) Rotate(token *UpdateToken) error {
 
 	a, b, err := token.Parse()
@@ -244,6 +251,7 @@ func (c *Client) Rotate(token *UpdateToken) error {
 	return nil
 }
 
+// Update needs to be applied to every database record to correspond to new private and public keys
 func (c *Client) Update(rec *EnrollmentRecord, token *UpdateToken) (updRec *EnrollmentRecord, err error) {
 
 	a, b, err := token.Parse()

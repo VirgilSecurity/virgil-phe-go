@@ -7,10 +7,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Server is responsible for protecting client records of one website
 type Server struct {
 	X *big.Int
 }
 
+// NewServer instantiates server object with a predefined key
 func NewServer(key []byte) (*Server, error) {
 	if len(key) > 32 || len(key) == 0 {
 		return nil, errors.New("invalid key length")
@@ -26,6 +28,7 @@ func GenerateServer() (*Server, error) {
 	return NewServer(x.Bytes())
 }
 
+// GetEnrollment generates a new random enrollment record and a proof
 func (s *Server) GetEnrollment() *EnrollmentResponse {
 	ns := make([]byte, 32)
 	_, err := rand.Read(ns)
@@ -42,14 +45,18 @@ func (s *Server) GetEnrollment() *EnrollmentResponse {
 	}
 }
 
+// GetPublicKey returns server public key
 func (s *Server) GetPublicKey() []byte {
 	return new(Point).ScalarBaseMult(s.X).Marshal()
 }
 
+// GetPrivateKey returns server private key
 func (s *Server) GetPrivateKey() []byte {
 	return s.X.Bytes()
 }
 
+// VerifyPassword compares password attempt to the one server would calculate itself using its private key
+// and returns a zero knowledge proof of ether success or failure
 func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPasswordResponse, err error) {
 
 	if req == nil || len(req.NS) > 32 || len(req.NS) == 0 {
@@ -163,6 +170,7 @@ func (s *Server) proveFailure(c0, hs0 *Point) (c1 *Point, proof *ProofOfFail) {
 	}
 }
 
+//Rotate updates server's private and public keys and issues an update token for use on client's side
 func (s *Server) Rotate() (token *UpdateToken, newPrivate []byte) {
 	a, b := RandomZ(), RandomZ()
 	s.X = gf.Add(gf.Mul(a, s.X), b)

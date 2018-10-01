@@ -18,22 +18,16 @@ func (c *EnrollmentRecord) Parse() (t0, t1 *Point, err error) {
 
 	if c == nil ||
 		len(c.NC) == 0 || len(c.NS) == 0 ||
-		len(c.T0) == 0 || len(c.T1) == 0 ||
-		len(c.NC) > 32 || len(c.NS) > 32 ||
-		len(c.T0) > 65 || len(c.T1) > 65 {
+		len(c.NC) > 32 || len(c.NS) > 32 {
 		err = errors.New("invalid record")
 		return
 	}
 
-	t0, err = PointUnmarshal(c.T0)
-	if err != nil {
+	if t0, err = PointUnmarshal(c.T0); err != nil {
 		return
 	}
 
 	t1, err = PointUnmarshal(c.T1)
-	if err != nil {
-		return
-	}
 	return
 }
 
@@ -51,18 +45,15 @@ func (p *ProofOfSuccess) Parse() (term1, term2, term3 *Point, blindX *big.Int, e
 		return
 	}
 
-	term1, err = PointUnmarshal(p.Term1)
-	if err != nil {
+	if term1, err = PointUnmarshal(p.Term1); err != nil {
 		return
 	}
 
-	term2, err = PointUnmarshal(p.Term2)
-	if err != nil {
+	if term2, err = PointUnmarshal(p.Term2); err != nil {
 		return
 	}
 
-	term3, err = PointUnmarshal(p.Term3)
-	if err != nil {
+	if term3, err = PointUnmarshal(p.Term3); err != nil {
 		return
 	}
 
@@ -91,23 +82,19 @@ func (p *ProofOfFail) Parse() (term1, term2, term3, term4 *Point, blindA, blindB
 		return
 	}
 
-	term1, err = PointUnmarshal(p.Term1)
-	if err != nil {
+	if term1, err = PointUnmarshal(p.Term1); err != nil {
 		return
 	}
 
-	term2, err = PointUnmarshal(p.Term2)
-	if err != nil {
+	if term2, err = PointUnmarshal(p.Term2); err != nil {
 		return
 	}
 
-	term3, err = PointUnmarshal(p.Term3)
-	if err != nil {
+	if term3, err = PointUnmarshal(p.Term3); err != nil {
 		return
 	}
 
-	term4, err = PointUnmarshal(p.Term4)
-	if err != nil {
+	if term4, err = PointUnmarshal(p.Term4); err != nil {
 		return
 	}
 
@@ -149,6 +136,7 @@ func (t *UpdateToken) Parse() (a, b *big.Int, err error) {
 	return
 }
 
+// EnrollmentResponse contains two pseudo-random points and seed which server used to generate them
 type EnrollmentResponse struct {
 	NS    []byte          `json:"ns"`
 	C0    []byte          `json:"c_0"`
@@ -156,11 +144,13 @@ type EnrollmentResponse struct {
 	Proof *ProofOfSuccess `json:"proof"`
 }
 
+// VerifyPasswordRequest contains server's nonce and an attempt to verify a password in form of an elliptic curve point
 type VerifyPasswordRequest struct {
 	NS []byte `json:"ns"`
 	C0 []byte `json:"c_0"`
 }
 
+//VerifyPasswordResponse returns the result of evaluating an entered password along with the zero knowledge proof
 type VerifyPasswordResponse struct {
 	Res          bool            `json:"res"`
 	C1           []byte          `json:"c_1"`

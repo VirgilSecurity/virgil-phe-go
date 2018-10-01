@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Point represents an elliptic curve point
 type Point struct {
 	X, Y *big.Int
 }
