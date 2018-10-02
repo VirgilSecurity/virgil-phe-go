@@ -27,8 +27,8 @@ var (
 	proofError = []byte("ProofError")
 )
 
-// RandomZ generates big random 256 bit integer which must be less than curve's N parameter
-func RandomZ() (z *big.Int) {
+// randomZ generates big random 256 bit integer which must be less than curve's N parameter
+func randomZ() (z *big.Int) {
 
 	rr := rand.Reader
 	rz, err := rand.Int(rr, maxZ)
@@ -51,8 +51,8 @@ func RandomZ() (z *big.Int) {
 	return
 }
 
-// HashZ maps arrays of bytes to an integer less than curve's N parameter
-func HashZ(data ...[]byte) (z *big.Int) {
+// hashZ maps arrays of bytes to an integer less than curve's N parameter
+func hashZ(data ...[]byte) (z *big.Int) {
 	if len(data) < 2 {
 		panic(data)
 	}
@@ -76,8 +76,8 @@ func HashZ(data ...[]byte) (z *big.Int) {
 	return
 }
 
-// HashToPoint maps arrays of bytes to a valid curve point
-func HashToPoint(data ...[]byte) *Point {
+// hashToPoint maps arrays of bytes to a valid curve point
+func hashToPoint(data ...[]byte) *Point {
 
 	if len(data) < 2 {
 		panic(data)
@@ -90,7 +90,7 @@ func HashToPoint(data ...[]byte) *Point {
 }
 
 func marshalKeypair(publicKey, privateKey []byte) ([]byte, error) {
-	kp := Keypair{
+	kp := keypair{
 		PublicKey:  publicKey,
 		PrivateKey: privateKey,
 	}
@@ -98,9 +98,9 @@ func marshalKeypair(publicKey, privateKey []byte) ([]byte, error) {
 	return asn1.Marshal(kp)
 }
 
-func unmarshalKeypair(serverKey []byte) (kp *Keypair, err error) {
+func unmarshalKeypair(serverKey []byte) (kp *keypair, err error) {
 
-	kp = &Keypair{}
+	kp = &keypair{}
 	rest, err := asn1.Unmarshal(serverKey, kp)
 
 	if len(rest) != 0 || err != nil {

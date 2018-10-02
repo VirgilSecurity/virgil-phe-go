@@ -38,7 +38,7 @@ func (p *Point) Add(a *Point) *Point {
 	return &Point{x, y}
 }
 
-// Neg inverts point's Y coordinate
+// Neg inverts point's clientPrivateKey coordinate
 func (p *Point) Neg() *Point {
 	t := new(Point)
 	t.X = p.X

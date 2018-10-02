@@ -31,7 +31,8 @@ func Test_PHE(t *testing.T) {
 	assert.NoError(t, err)
 	pub, err := GetPublicKey(serverKey)
 	assert.NoError(t, err)
-	c := &Client{Y: RandomZ(), ServerPublicKey: pub}
+	c, err := NewClient(randomZ().Bytes(), pub)
+	assert.NoError(t, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKey)
@@ -64,7 +65,7 @@ func Test_PHE(t *testing.T) {
 	//rotated public key must be the same as on server
 	newPub, err := GetPublicKey(newPrivate)
 	assert.NoError(t, err)
-	assert.Equal(t, c.ServerPublicKey, newPub)
+	assert.Equal(t, c.serverPublicKeyBytes, newPub)
 	rec1, err := c.Update(rec, token)
 	assert.NoError(t, err)
 	//Check password request
@@ -87,7 +88,8 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 	assert.NoError(t, err)
 	pub, err := GetPublicKey(serverKey)
 	assert.NoError(t, err)
-	c := &Client{Y: RandomZ(), ServerPublicKey: pub}
+	c, err := NewClient(randomZ().Bytes(), pub)
+	assert.NoError(t, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKey)
@@ -124,7 +126,8 @@ func BenchmarkClient_EnrollAccount(b *testing.B) {
 	assert.NoError(b, err)
 	pub, err := GetPublicKey(serverKey)
 	assert.NoError(b, err)
-	c := &Client{Y: RandomZ(), ServerPublicKey: pub}
+	c, err := NewClient(randomZ().Bytes(), pub)
+	assert.NoError(b, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKey)
@@ -143,7 +146,8 @@ func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
 	assert.NoError(b, err)
 	pub, err := GetPublicKey(serverKey)
 	assert.NoError(b, err)
-	c := &Client{Y: RandomZ(), ServerPublicKey: pub}
+	c, err := NewClient(randomZ().Bytes(), pub)
+	assert.NoError(b, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKey)
@@ -167,7 +171,8 @@ func BenchmarkLoginFlow(b *testing.B) {
 	assert.NoError(b, err)
 	pub, err := GetPublicKey(serverKey)
 	assert.NoError(b, err)
-	c := &Client{Y: RandomZ(), ServerPublicKey: pub}
+	c, err := NewClient(randomZ().Bytes(), pub)
+	assert.NoError(b, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKey)

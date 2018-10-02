@@ -6,8 +6,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GenerateServerKey creates a new random Nist p-256 keypair
 func GenerateServerKey() ([]byte, error) {
-	privateKey := RandomZ().Bytes()
+	privateKey := randomZ().Bytes()
 	publicKey := new(Point).ScalarBaseMult(privateKey)
 
 	return marshalKeypair(publicKey.Marshal(), privateKey)
@@ -68,8 +69,8 @@ func VerifyPassword(serverKey []byte, req *VerifyPasswordRequest) (response *Ver
 		return
 	}
 
-	hs0 := HashToPoint(ns, dhs0)
-	hs1 := HashToPoint(ns, dhs1)
+	hs0 := hashToPoint(ns, dhs0)
+	hs1 := hashToPoint(ns, dhs1)
 
 	if hs0.ScalarMult(kp.PrivateKey).Equal(c0) {
 		//password is ok
@@ -100,17 +101,17 @@ func VerifyPassword(serverKey []byte, req *VerifyPasswordRequest) (response *Ver
 	return
 }
 
-func eval(kp *Keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
-	hs0 = HashToPoint(ns, dhs0)
-	hs1 = HashToPoint(ns, dhs1)
+func eval(kp *keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
+	hs0 = hashToPoint(ns, dhs0)
+	hs1 = hashToPoint(ns, dhs1)
 
 	c0 = hs0.ScalarMult(kp.PrivateKey)
 	c1 = hs1.ScalarMult(kp.PrivateKey)
 	return
 }
 
-func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
-	blindX := RandomZ()
+func proveSuccess(kp *keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
+	blindX := randomZ()
 
 	term1 := hs0.ScalarMult(blindX.Bytes())
 	term2 := hs1.ScalarMult(blindX.Bytes())
@@ -118,7 +119,7 @@ func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 
 	//challenge = group.hash((self.X, self.G, c0, c1, term1, term2, term3), target_type=ZR)
 
-	challenge := HashZ(kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), proofOk)
+	challenge := hashZ(kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), proofOk)
 	res := gf.Add(blindX, gf.MulBytes(kp.PrivateKey, challenge))
 
 	return &ProofOfSuccess{
@@ -130,8 +131,8 @@ func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 
 }
 
-func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, err error) {
-	r := RandomZ()
+func proveFailure(kp *keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, err error) {
+	r := randomZ()
 	minusR := gf.Neg(r)
 	minusRX := gf.MulBytes(kp.PrivateKey, minusR)
 
@@ -140,8 +141,8 @@ func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, e
 	a := r
 	b := minusRX
 
-	blindA := RandomZ().Bytes()
-	blindB := RandomZ().Bytes()
+	blindA := randomZ().Bytes()
+	blindB := randomZ().Bytes()
 
 	publicKey, err := PointUnmarshal(kp.PublicKey)
 	if err != nil {
@@ -159,7 +160,7 @@ func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, e
 	term3 := publicKey.ScalarMult(blindA)
 	term4 := new(Point).ScalarBaseMult(blindB)
 
-	challenge := HashZ(kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
+	challenge := hashZ(kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
 
 	return c1, &ProofOfFail{
 		Term1:  term1.Marshal(),
@@ -178,7 +179,7 @@ func Rotate(serverKey []byte) (token *UpdateToken, newServerKey []byte, err erro
 	if err != nil {
 		return
 	}
-	a, b := RandomZ(), RandomZ()
+	a, b := randomZ(), randomZ()
 	newPrivate := gf.Add(gf.MulBytes(kp.PrivateKey, a), b).Bytes()
 	newPublic := new(Point).ScalarBaseMult(newPrivate)
 

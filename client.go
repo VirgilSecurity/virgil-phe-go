@@ -3,16 +3,39 @@ package phe
 import (
 	"crypto/rand"
 	"crypto/sha512"
-	"errors"
 	"math/big"
 
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/hkdf"
 )
 
 // Client is responsible for protecting & checking passwords at the client (website) side
 type Client struct {
-	Y               *big.Int
-	ServerPublicKey []byte
+	clientPrivateKey      *big.Int
+	clientPrivateKeyBytes []byte
+	serverPublicKey       *Point
+	serverPublicKeyBytes  []byte
+}
+
+//NewClient creates new client instance using client's private key and server's public key used for verification
+func NewClient(privateKey []byte, serverPublicKey []byte) (*Client, error) {
+	if len(privateKey) == 0 {
+		return nil, errors.New("invalid private key")
+	}
+
+	pub, err := PointUnmarshal(serverPublicKey)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{
+		clientPrivateKey:      new(big.Int).SetBytes(privateKey),
+		serverPublicKey:       pub,
+		clientPrivateKeyBytes: privateKey,
+		serverPublicKeyBytes:  serverPublicKey,
+	}, nil
+
 }
 
 // EnrollAccount uses fresh Enrollment Response and user's password (or its hash) to create a new Enrollment Record which
@@ -30,14 +53,14 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 	if err != nil {
 		panic(err)
 	}
-	m := HashToPoint(mBuf, dm)
+	m := hashToPoint(mBuf, dm)
 
 	kdf := hkdf.New(sha512.New512_256, m.Marshal(), nil, []byte("Secret"))
 	key = make([]byte, 32)
 	_, err = kdf.Read(key)
 
-	hc0 := HashToPoint(nc, password, dhc0)
-	hc1 := HashToPoint(nc, password, dhc1)
+	hc0 := hashToPoint(nc, password, dhc0)
+	hc1 := hashToPoint(nc, password, dhc1)
 
 	c0, err := PointUnmarshal(resp.C0)
 	if err != nil {
@@ -55,8 +78,8 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 		return
 	}
 
-	t0 := c0.Add(hc0.ScalarMultInt(c.Y))
-	t1 := c1.Add(hc1.ScalarMultInt(c.Y)).Add(m.ScalarMultInt(c.Y))
+	t0 := c0.Add(hc0.ScalarMultInt(c.clientPrivateKey))
+	t1 := c1.Add(hc1.ScalarMultInt(c.clientPrivateKey)).Add(m.ScalarMultInt(c.clientPrivateKey))
 
 	rec = &EnrollmentRecord{
 		NS: resp.NS,
@@ -81,10 +104,10 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 		return false
 	}
 
-	hs0 := HashToPoint(nonce, dhs0)
-	hs1 := HashToPoint(nonce, dhs1)
+	hs0 := hashToPoint(nonce, dhs0)
+	hs1 := hashToPoint(nonce, dhs1)
 
-	challenge := HashZ(c.ServerPublicKey, curveG.Marshal(), c0.Marshal(), c1b, proof.Term1, proof.Term2, proof.Term3, proofOk)
+	challenge := hashZ(c.serverPublicKeyBytes, curveG.Marshal(), c0.Marshal(), c1b, proof.Term1, proof.Term2, proof.Term3, proofOk)
 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
 	// return False
@@ -106,15 +129,10 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 		return false
 	}
 
-	pub, err := PointUnmarshal(c.ServerPublicKey)
-	if err != nil {
-		return false
-	}
-
 	//if term3 * (self.X ** challenge) != self.G ** blind_x:
 	// return False
 
-	t1 = term3.Add(pub.ScalarMultInt(challenge))
+	t1 = term3.Add(c.serverPublicKey.ScalarMultInt(challenge))
 	t2 = new(Point).ScalarBaseMultInt(blindX)
 
 	if !t1.Equal(t2) {
@@ -131,8 +149,8 @@ func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRec
 		return nil, errors.New("invalid client record")
 	}
 
-	hc0 := HashToPoint(rec.NC, password, dhc0)
-	minusY := gf.Neg(c.Y)
+	hc0 := hashToPoint(rec.NC, password, dhc0)
+	minusY := gf.Neg(c.clientPrivateKey)
 
 	t0, err := PointUnmarshal(rec.T0)
 	if err != nil {
@@ -164,14 +182,14 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 		return nil, err
 	}
 
-	hc0 := HashToPoint(rec.NC, password, dhc0)
-	hc1 := HashToPoint(rec.NC, password, dhc1)
+	hc0 := hashToPoint(rec.NC, password, dhc0)
+	hc1 := hashToPoint(rec.NC, password, dhc1)
 
-	hs0 := HashToPoint(rec.NS, dhs0)
+	hs0 := hashToPoint(rec.NS, dhs0)
 
 	//c0 = t0 * (hc0 ** (-self.y))
 
-	minusY := gf.Neg(c.Y)
+	minusY := gf.Neg(c.clientPrivateKey)
 
 	c0 := t0.Add(hc0.ScalarMultInt(minusY))
 
@@ -183,7 +201,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 
 		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
 
-		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMultInt(minusY))).ScalarMultInt(gf.Inv(c.Y))
+		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMultInt(minusY))).ScalarMultInt(gf.Inv(c.clientPrivateKey))
 
 		kdf := hkdf.New(sha512.New512_256, m.Marshal(), nil, []byte("Secret"))
 		key = make([]byte, 32)
@@ -204,12 +222,7 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 		return errors.New("invalid public key")
 	}
 
-	pub, err := PointUnmarshal(c.ServerPublicKey)
-	if err != nil {
-		return errors.New("invalid public key")
-	}
-
-	challenge := HashZ(c.ServerPublicKey, curveG.Marshal(), c0.Marshal(), resp.C1, resp.ProofFail.Term1, resp.ProofFail.Term2, resp.ProofFail.Term3, resp.ProofFail.Term4, proofError)
+	challenge := hashZ(c.serverPublicKeyBytes, curveG.Marshal(), c0.Marshal(), resp.C1, resp.ProofFail.Term1, resp.ProofFail.Term2, resp.ProofFail.Term3, resp.ProofFail.Term4, proofError)
 	//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
 	//return False
 	//
@@ -224,7 +237,7 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 	}
 
 	t1 = term3.Add(term4)
-	t2 = pub.ScalarMultInt(blindA).Add(new(Point).ScalarBaseMultInt(blindB))
+	t2 = c.serverPublicKey.ScalarMultInt(blindA).Add(new(Point).ScalarBaseMultInt(blindB))
 
 	if !t1.Equal(t2) {
 		return errors.New("verification failed")
@@ -240,14 +253,13 @@ func (c *Client) Rotate(token *UpdateToken) error {
 		return err
 	}
 
-	c.Y = gf.Mul(c.Y, a)
+	c.clientPrivateKey = gf.Mul(c.clientPrivateKey, a)
+	c.clientPrivateKeyBytes = c.clientPrivateKey.Bytes()
 
-	pub, err := PointUnmarshal(c.ServerPublicKey)
-	if err != nil {
-		return errors.New("invalid server public key")
-	}
-	pub = pub.ScalarMultInt(a).Add(new(Point).ScalarBaseMultInt(b))
-	c.ServerPublicKey = pub.Marshal()
+	pub := c.serverPublicKey.ScalarMultInt(a).Add(new(Point).ScalarBaseMultInt(b))
+
+	c.serverPublicKey = pub
+	c.serverPublicKeyBytes = pub.Marshal()
 	return nil
 }
 
@@ -264,8 +276,8 @@ func (c *Client) Update(rec *EnrollmentRecord, token *UpdateToken) (updRec *Enro
 		return nil, err
 	}
 
-	hs0 := HashToPoint(rec.NS, dhs0)
-	hs1 := HashToPoint(rec.NS, dhs1)
+	hs0 := hashToPoint(rec.NS, dhs0)
+	hs1 := hashToPoint(rec.NS, dhs1)
 
 	t00 := t0.ScalarMultInt(a).Add(hs0.ScalarMultInt(b))
 	t11 := t1.ScalarMultInt(a).Add(hs1.ScalarMultInt(b))
