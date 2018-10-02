@@ -14,7 +14,7 @@ type EnrollmentRecord struct {
 	T1 []byte `json:"t_1"`
 }
 
-func (c *EnrollmentRecord) Parse() (t0, t1 *Point, err error) {
+func (c *EnrollmentRecord) parse() (t0, t1 *Point, err error) {
 
 	if c == nil ||
 		len(c.NC) == 0 || len(c.NS) == 0 ||
@@ -39,7 +39,7 @@ type ProofOfSuccess struct {
 	BlindX []byte `json:"blind_x"`
 }
 
-func (p *ProofOfSuccess) Parse() (term1, term2, term3 *Point, blindX *big.Int, err error) {
+func (p *ProofOfSuccess) parse() (term1, term2, term3 *Point, blindX *big.Int, err error) {
 	if p == nil {
 		err = errors.New("invalid proof")
 		return
@@ -76,7 +76,7 @@ type ProofOfFail struct {
 	BlindB []byte `json:"blind_b"`
 }
 
-func (p *ProofOfFail) Parse() (term1, term2, term3, term4 *Point, blindA, blindB *big.Int, err error) {
+func (p *ProofOfFail) parse() (term1, term2, term3, term4 *Point, blindA, blindB *big.Int, err error) {
 	if p == nil {
 		err = errors.New("invalid proof")
 		return
@@ -120,7 +120,7 @@ type UpdateToken struct {
 	B []byte `json:"b"`
 }
 
-func (t *UpdateToken) Parse() (a, b *big.Int, err error) {
+func (t *UpdateToken) parse() (a, b *big.Int, err error) {
 	if t == nil {
 		return nil, nil, errors.New("invalid token")
 	}
@@ -156,4 +156,9 @@ type VerifyPasswordResponse struct {
 	C1           []byte          `json:"c_1"`
 	ProofSuccess *ProofOfSuccess `json:"proof_success,omitempty"`
 	ProofFail    *ProofOfFail    `json:"proof_fail,omitempty"`
+}
+
+type Keypair struct {
+	PublicKey  []byte
+	PrivateKey []byte
 }

@@ -2,62 +2,59 @@ package phe
 
 import (
 	"crypto/rand"
-	"math/big"
 
 	"github.com/pkg/errors"
 )
 
-// Server is responsible for protecting client records of one website
-type Server struct {
-	X *big.Int
-}
+func GenerateServerKey() ([]byte, error) {
+	privateKey := RandomZ().Bytes()
+	publicKey := new(Point).ScalarBaseMult(privateKey)
 
-// NewServer instantiates server object with a predefined key
-func NewServer(key []byte) (*Server, error) {
-	if len(key) > 32 || len(key) == 0 {
-		return nil, errors.New("invalid key length")
-	}
-	return &Server{
-		X: new(big.Int).SetBytes(key),
-	}, nil
-}
+	return marshalKeypair(publicKey.Marshal(), privateKey)
 
-// GenerateServer creates new server instance and generates a private key for it
-func GenerateServer() (*Server, error) {
-	x := RandomZ()
-	return NewServer(x.Bytes())
 }
 
 // GetEnrollment generates a new random enrollment record and a proof
-func (s *Server) GetEnrollment() *EnrollmentResponse {
-	ns := make([]byte, 32)
-	_, err := rand.Read(ns)
+func GetEnrollment(serverKey []byte) (*EnrollmentResponse, error) {
+
+	kp, err := unmarshalKeypair(serverKey)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	hs0, hs1, c0, c1 := s.eval(ns)
-	proof := s.proveSuccess(hs0, hs1, c0, c1)
+
+	ns := make([]byte, 32)
+	_, err = rand.Read(ns)
+	if err != nil {
+		return nil, err
+	}
+	hs0, hs1, c0, c1 := eval(kp, ns)
+	proof := proveSuccess(kp, hs0, hs1, c0, c1)
 	return &EnrollmentResponse{
 		NS:    ns,
 		C0:    c0.Marshal(),
 		C1:    c1.Marshal(),
 		Proof: proof,
-	}
+	}, nil
 }
 
 // GetPublicKey returns server public key
-func (s *Server) GetPublicKey() []byte {
-	return new(Point).ScalarBaseMult(s.X).Marshal()
-}
+func GetPublicKey(serverKey []byte) ([]byte, error) {
+	key, err := unmarshalKeypair(serverKey)
+	if err != nil {
+		return nil, err
+	}
 
-// GetPrivateKey returns server private key
-func (s *Server) GetPrivateKey() []byte {
-	return s.X.Bytes()
+	return key.PublicKey, nil
 }
 
 // VerifyPassword compares password attempt to the one server would calculate itself using its private key
 // and returns a zero knowledge proof of ether success or failure
-func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPasswordResponse, err error) {
+func VerifyPassword(serverKey []byte, req *VerifyPasswordRequest) (response *VerifyPasswordResponse, err error) {
+
+	kp, err := unmarshalKeypair(serverKey)
+	if err != nil {
+		return nil, err
+	}
 
 	if req == nil || len(req.NS) > 32 || len(req.NS) == 0 {
 		err = errors.New("Invalid password verify request")
@@ -74,22 +71,25 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 	hs0 := HashToPoint(ns, dhs0)
 	hs1 := HashToPoint(ns, dhs1)
 
-	if hs0.ScalarMult(s.X).Equal(c0) {
+	if hs0.ScalarMult(kp.PrivateKey).Equal(c0) {
 		//password is ok
 
-		c1 := hs1.ScalarMult(s.X)
+		c1 := hs1.ScalarMult(kp.PrivateKey)
 
 		response = &VerifyPasswordResponse{
 			Res:          true,
 			C1:           c1.Marshal(),
-			ProofSuccess: s.proveSuccess(hs0, hs1, c0, c1),
+			ProofSuccess: proveSuccess(kp, hs0, hs1, c0, c1),
 		}
 		return
 	}
 
 	//password is invalid
 
-	c1, proof := s.proveFailure(c0, hs0)
+	c1, proof, err := proveFailure(kp, c0, hs0)
+	if err != nil {
+		return
+	}
 
 	response = &VerifyPasswordResponse{
 		Res:       false,
@@ -100,27 +100,26 @@ func (s *Server) VerifyPassword(req *VerifyPasswordRequest) (response *VerifyPas
 	return
 }
 
-func (s *Server) eval(ns []byte) (hs0, hs1, c0, c1 *Point) {
+func eval(kp *Keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
 	hs0 = HashToPoint(ns, dhs0)
 	hs1 = HashToPoint(ns, dhs1)
 
-	c0 = hs0.ScalarMult(s.X)
-	c1 = hs1.ScalarMult(s.X)
+	c0 = hs0.ScalarMult(kp.PrivateKey)
+	c1 = hs1.ScalarMult(kp.PrivateKey)
 	return
 }
 
-func (s *Server) proveSuccess(hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
+func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 	blindX := RandomZ()
 
-	term1 := hs0.ScalarMult(blindX)
-	term2 := hs1.ScalarMult(blindX)
-	term3 := new(Point).ScalarBaseMult(blindX)
+	term1 := hs0.ScalarMult(blindX.Bytes())
+	term2 := hs1.ScalarMult(blindX.Bytes())
+	term3 := new(Point).ScalarBaseMult(blindX.Bytes())
 
 	//challenge = group.hash((self.X, self.G, c0, c1, term1, term2, term3), target_type=ZR)
 
-	pub := new(Point).ScalarBaseMult(s.X)
-	challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), proofOk)
-	res := gf.Add(blindX, gf.Mul(challenge, s.X))
+	challenge := HashZ(kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), proofOk)
+	res := gf.Add(blindX, gf.MulBytes(kp.PrivateKey, challenge))
 
 	return &ProofOfSuccess{
 		Term1:  term1.Marshal(),
@@ -131,20 +130,23 @@ func (s *Server) proveSuccess(hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 
 }
 
-func (s *Server) proveFailure(c0, hs0 *Point) (c1 *Point, proof *ProofOfFail) {
+func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, err error) {
 	r := RandomZ()
 	minusR := gf.Neg(r)
-	minusRX := gf.Mul(minusR, s.X)
+	minusRX := gf.MulBytes(kp.PrivateKey, minusR)
 
-	c1 = c0.ScalarMult(r).Add(hs0.ScalarMult(minusRX))
+	c1 = c0.ScalarMult(r.Bytes()).Add(hs0.ScalarMult(minusRX.Bytes()))
 
 	a := r
 	b := minusRX
 
-	blindA := RandomZ()
-	blindB := RandomZ()
+	blindA := RandomZ().Bytes()
+	blindB := RandomZ().Bytes()
 
-	X := new(Point).ScalarBaseMult(s.X)
+	publicKey, err := PointUnmarshal(kp.PublicKey)
+	if err != nil {
+		return
+	}
 
 	// I = (self.X ** a) * (self.G ** b)
 	// term1 = c0     ** blind_a
@@ -154,31 +156,41 @@ func (s *Server) proveFailure(c0, hs0 *Point) (c1 *Point, proof *ProofOfFail) {
 
 	term1 := c0.ScalarMult(blindA)
 	term2 := hs0.ScalarMult(blindB)
-	term3 := X.ScalarMult(blindA)
+	term3 := publicKey.ScalarMult(blindA)
 	term4 := new(Point).ScalarBaseMult(blindB)
 
-	pub := new(Point).ScalarBaseMult(s.X)
-	challenge := HashZ(pub.Marshal(), curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
+	challenge := HashZ(kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
 
 	return c1, &ProofOfFail{
 		Term1:  term1.Marshal(),
 		Term2:  term2.Marshal(),
 		Term3:  term3.Marshal(),
 		Term4:  term4.Marshal(),
-		BlindA: gf.Add(blindA, gf.Mul(challenge, a)).Bytes(),
-		BlindB: gf.Add(blindB, gf.Mul(challenge, b)).Bytes(),
-	}
+		BlindA: gf.AddBytes(blindA, gf.Mul(challenge, a)).Bytes(),
+		BlindB: gf.AddBytes(blindB, gf.Mul(challenge, b)).Bytes(),
+	}, nil
 }
 
 //Rotate updates server's private and public keys and issues an update token for use on client's side
-func (s *Server) Rotate() (token *UpdateToken, newPrivate []byte) {
+func Rotate(serverKey []byte) (token *UpdateToken, newServerKey []byte, err error) {
+
+	kp, err := unmarshalKeypair(serverKey)
+	if err != nil {
+		return
+	}
 	a, b := RandomZ(), RandomZ()
-	s.X = gf.Add(gf.Mul(a, s.X), b)
-	newPrivate = s.X.Bytes()
+	newPrivate := gf.Add(gf.MulBytes(kp.PrivateKey, a), b).Bytes()
+	newPublic := new(Point).ScalarBaseMult(newPrivate)
+
+	newServerKey, err = marshalKeypair(newPublic.Marshal(), newPrivate)
+	if err != nil {
+		return
+	}
 
 	token = &UpdateToken{
 		A: a.Bytes(),
 		B: b.Bytes(),
 	}
+
 	return
 }

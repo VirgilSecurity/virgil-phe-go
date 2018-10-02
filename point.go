@@ -47,14 +47,28 @@ func (p *Point) Neg() *Point {
 }
 
 // ScalarMult multiplies point to a number
-func (p *Point) ScalarMult(b *big.Int) *Point {
+func (p *Point) ScalarMult(b []byte) *Point {
+	x, y := curve.ScalarMult(p.X, p.Y, b)
+
+	return &Point{x, y}
+}
+
+// ScalarMultInt multiplies point to a number
+func (p *Point) ScalarMultInt(b *big.Int) *Point {
 	x, y := curve.ScalarMult(p.X, p.Y, b.Bytes())
 
 	return &Point{x, y}
 }
 
 // ScalarBaseMult multiplies base point to a number
-func (p *Point) ScalarBaseMult(b *big.Int) *Point {
+func (p *Point) ScalarBaseMult(b []byte) *Point {
+	x, y := curve.ScalarBaseMult(b)
+
+	return &Point{x, y}
+}
+
+// ScalarBaseMultInt multiplies base point to a number
+func (p *Point) ScalarBaseMultInt(b *big.Int) *Point {
 	x, y := curve.ScalarBaseMult(b.Bytes())
 
 	return &Point{x, y}

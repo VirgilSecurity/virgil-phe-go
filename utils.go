@@ -3,15 +3,17 @@ package phe
 import (
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/asn1"
 	"math/big"
 
 	"github.com/Scratch-net/PHE/swu"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/sha3"
 )
 
 var (
 	curve  = elliptic.P256()
-	curveG = new(Point).ScalarBaseMult(new(big.Int).SetUint64(1))
+	curveG = new(Point).ScalarBaseMultInt(new(big.Int).SetUint64(1))
 	gf     = swu.GF{P: curve.Params().N}
 	maxZ   = new(big.Int).SetBit(new(big.Int), 256, 1)
 
@@ -85,4 +87,25 @@ func HashToPoint(data ...[]byte) *Point {
 	sha3.TupleHash256(data[:len(data)-1], data[len(data)-1], hash)
 	x, y := swu.HashToPoint(hash)
 	return &Point{x, y}
+}
+
+func marshalKeypair(publicKey, privateKey []byte) ([]byte, error) {
+	kp := Keypair{
+		PublicKey:  publicKey,
+		PrivateKey: privateKey,
+	}
+
+	return asn1.Marshal(kp)
+}
+
+func unmarshalKeypair(serverKey []byte) (kp *Keypair, err error) {
+
+	kp = &Keypair{}
+	rest, err := asn1.Unmarshal(serverKey, kp)
+
+	if len(rest) != 0 || err != nil {
+		return nil, errors.New("invalid keypair")
+	}
+
+	return
 }

@@ -55,8 +55,8 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 		return
 	}
 
-	t0 := c0.Add(hc0.ScalarMult(c.Y))
-	t1 := c1.Add(hc1.ScalarMult(c.Y)).Add(m.ScalarMult(c.Y))
+	t0 := c0.Add(hc0.ScalarMultInt(c.Y))
+	t1 := c1.Add(hc1.ScalarMultInt(c.Y)).Add(m.ScalarMultInt(c.Y))
 
 	rec = &EnrollmentRecord{
 		NS: resp.NS,
@@ -70,7 +70,7 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 
 func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 *Point, c1b []byte) bool {
 
-	term1, term2, term3, blindX, err := proof.Parse()
+	term1, term2, term3, blindX, err := proof.parse()
 
 	if err != nil {
 		return false
@@ -89,8 +89,8 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
 	// return False
 
-	t1 := term1.Add(c0.ScalarMult(challenge))
-	t2 := hs0.ScalarMult(blindX)
+	t1 := term1.Add(c0.ScalarMultInt(challenge))
+	t2 := hs0.ScalarMultInt(blindX)
 
 	if !t1.Equal(t2) {
 		return false
@@ -99,8 +99,8 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 	// if term2 * (c1 ** challenge) != hs1 ** blind_x:
 	// return False
 
-	t1 = term2.Add(c1.ScalarMult(challenge))
-	t2 = hs1.ScalarMult(blindX)
+	t1 = term2.Add(c1.ScalarMultInt(challenge))
+	t2 = hs1.ScalarMultInt(blindX)
 
 	if !t1.Equal(t2) {
 		return false
@@ -114,8 +114,8 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 	//if term3 * (self.X ** challenge) != self.G ** blind_x:
 	// return False
 
-	t1 = term3.Add(pub.ScalarMult(challenge))
-	t2 = new(Point).ScalarBaseMult(blindX)
+	t1 = term3.Add(pub.ScalarMultInt(challenge))
+	t2 = new(Point).ScalarBaseMultInt(blindX)
 
 	if !t1.Equal(t2) {
 		return false
@@ -139,7 +139,7 @@ func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRec
 		return nil, errors.New("invalid proof")
 	}
 
-	c0 := t0.Add(hc0.ScalarMult(minusY))
+	c0 := t0.Add(hc0.ScalarMultInt(minusY))
 	req = &VerifyPasswordRequest{
 		C0: c0.Marshal(),
 		NS: rec.NS,
@@ -154,7 +154,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 		return nil, errors.New("invalid response")
 	}
 
-	t0, t1, err := rec.Parse()
+	t0, t1, err := rec.parse()
 	if err != nil {
 		return nil, errors.New("invalid record")
 	}
@@ -173,7 +173,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 
 	minusY := gf.Neg(c.Y)
 
-	c0 := t0.Add(hc0.ScalarMult(minusY))
+	c0 := t0.Add(hc0.ScalarMultInt(minusY))
 
 	if resp.Res {
 
@@ -183,7 +183,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 
 		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
 
-		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMult(minusY))).ScalarMult(gf.Inv(c.Y))
+		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMultInt(minusY))).ScalarMultInt(gf.Inv(c.Y))
 
 		kdf := hkdf.New(sha512.New512_256, m.Marshal(), nil, []byte("Secret"))
 		key = make([]byte, 32)
@@ -199,7 +199,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 }
 
 func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, hc0, hc1 *Point) error {
-	term1, term2, term3, term4, blindA, blindB, err := resp.ProofFail.Parse()
+	term1, term2, term3, term4, blindA, blindB, err := resp.ProofFail.parse()
 	if err != nil {
 		return errors.New("invalid public key")
 	}
@@ -216,15 +216,15 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 	//if term3 * term4 * (I ** challenge) != (self.X ** blind_a) * (self.G ** blind_b):
 	//return False
 
-	t1 := term1.Add(term2).Add(c1.ScalarMult(challenge))
-	t2 := c0.ScalarMult(blindA).Add(hs0.ScalarMult(blindB))
+	t1 := term1.Add(term2).Add(c1.ScalarMultInt(challenge))
+	t2 := c0.ScalarMultInt(blindA).Add(hs0.ScalarMultInt(blindB))
 
 	if !t1.Equal(t2) {
 		return errors.New("proof verification failed")
 	}
 
 	t1 = term3.Add(term4)
-	t2 = pub.ScalarMult(blindA).Add(new(Point).ScalarBaseMult(blindB))
+	t2 = pub.ScalarMultInt(blindA).Add(new(Point).ScalarBaseMultInt(blindB))
 
 	if !t1.Equal(t2) {
 		return errors.New("verification failed")
@@ -235,7 +235,7 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 // Rotate updates client's secret key and server's public key with server's update token
 func (c *Client) Rotate(token *UpdateToken) error {
 
-	a, b, err := token.Parse()
+	a, b, err := token.parse()
 	if err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func (c *Client) Rotate(token *UpdateToken) error {
 	if err != nil {
 		return errors.New("invalid server public key")
 	}
-	pub = pub.ScalarMult(a).Add(new(Point).ScalarBaseMult(b))
+	pub = pub.ScalarMultInt(a).Add(new(Point).ScalarBaseMultInt(b))
 	c.ServerPublicKey = pub.Marshal()
 	return nil
 }
@@ -254,12 +254,12 @@ func (c *Client) Rotate(token *UpdateToken) error {
 // Update needs to be applied to every database record to correspond to new private and public keys
 func (c *Client) Update(rec *EnrollmentRecord, token *UpdateToken) (updRec *EnrollmentRecord, err error) {
 
-	a, b, err := token.Parse()
+	a, b, err := token.parse()
 	if err != nil {
 		return nil, err
 	}
 
-	t0, t1, err := rec.Parse()
+	t0, t1, err := rec.parse()
 	if err != nil {
 		return nil, err
 	}
@@ -267,8 +267,8 @@ func (c *Client) Update(rec *EnrollmentRecord, token *UpdateToken) (updRec *Enro
 	hs0 := HashToPoint(rec.NS, dhs0)
 	hs1 := HashToPoint(rec.NS, dhs1)
 
-	t00 := t0.ScalarMult(a).Add(hs0.ScalarMult(b))
-	t11 := t1.ScalarMult(a).Add(hs1.ScalarMult(b))
+	t00 := t0.ScalarMultInt(a).Add(hs0.ScalarMultInt(b))
+	t11 := t1.ScalarMultInt(a).Add(hs1.ScalarMultInt(b))
 
 	updRec = &EnrollmentRecord{
 		T0: t00.Marshal(),
