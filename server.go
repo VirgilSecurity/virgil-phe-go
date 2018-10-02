@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GenerateServerKey creates a new random Nist p-256 keypair
-func GenerateServerKey() ([]byte, error) {
+// GenerateserverKeypair creates a new random Nist p-256 keypair
+func GenerateserverKeypair() ([]byte, error) {
 	privateKey := randomZ().Bytes()
 	publicKey := new(Point).ScalarBaseMult(privateKey)
 
@@ -16,9 +16,9 @@ func GenerateServerKey() ([]byte, error) {
 }
 
 // GetEnrollment generates a new random enrollment record and a proof
-func GetEnrollment(serverKey []byte) (*EnrollmentResponse, error) {
+func GetEnrollment(serverKeypair []byte) (*EnrollmentResponse, error) {
 
-	kp, err := unmarshalKeypair(serverKey)
+	kp, err := unmarshalKeypair(serverKeypair)
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +39,8 @@ func GetEnrollment(serverKey []byte) (*EnrollmentResponse, error) {
 }
 
 // GetPublicKey returns server public key
-func GetPublicKey(serverKey []byte) ([]byte, error) {
-	key, err := unmarshalKeypair(serverKey)
+func GetPublicKey(serverKeypair []byte) ([]byte, error) {
+	key, err := unmarshalKeypair(serverKeypair)
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +50,9 @@ func GetPublicKey(serverKey []byte) ([]byte, error) {
 
 // VerifyPassword compares password attempt to the one server would calculate itself using its private key
 // and returns a zero knowledge proof of ether success or failure
-func VerifyPassword(serverKey []byte, req *VerifyPasswordRequest) (response *VerifyPasswordResponse, err error) {
+func VerifyPassword(serverKeypair []byte, req *VerifyPasswordRequest) (response *VerifyPasswordResponse, err error) {
 
-	kp, err := unmarshalKeypair(serverKey)
+	kp, err := unmarshalKeypair(serverKeypair)
 	if err != nil {
 		return nil, err
 	}
@@ -173,9 +173,9 @@ func proveFailure(kp *keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, e
 }
 
 //Rotate updates server's private and public keys and issues an update token for use on client's side
-func Rotate(serverKey []byte) (token *UpdateToken, newServerKey []byte, err error) {
+func Rotate(serverKeypair []byte) (token *UpdateToken, newServerKeypair []byte, err error) {
 
-	kp, err := unmarshalKeypair(serverKey)
+	kp, err := unmarshalKeypair(serverKeypair)
 	if err != nil {
 		return
 	}
@@ -183,7 +183,7 @@ func Rotate(serverKey []byte) (token *UpdateToken, newServerKey []byte, err erro
 	newPrivate := gf.Add(gf.MulBytes(kp.PrivateKey, a), b).Bytes()
 	newPublic := new(Point).ScalarBaseMult(newPrivate)
 
-	newServerKey, err = marshalKeypair(newPublic.Marshal(), newPrivate)
+	newServerKeypair, err = marshalKeypair(newPublic.Marshal(), newPrivate)
 	if err != nil {
 		return
 	}

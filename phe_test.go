@@ -27,15 +27,15 @@ func BenchmarkAddP256(b *testing.B) {
 }
 
 func Test_PHE(t *testing.T) {
-	serverKey, err := GenerateServerKey()
+	serverKeypair, err := GenerateserverKeypair()
 	assert.NoError(t, err)
-	pub, err := GetPublicKey(serverKey)
+	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(t, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
 	assert.NoError(t, err)
 
 	//first, ask server for random values & proof
-	enrollment, err := GetEnrollment(serverKey)
+	enrollment, err := GetEnrollment(serverKeypair)
 	assert.NoError(t, err)
 
 	// Enroll account
@@ -47,7 +47,7 @@ func Test_PHE(t *testing.T) {
 	req, err := c.CreateVerifyPasswordRequest(pwd, rec)
 	assert.NoError(t, err)
 	//Check password on server
-	res, err := VerifyPassword(serverKey, req)
+	res, err := VerifyPassword(serverKeypair, req)
 
 	assert.NoError(t, err)
 
@@ -58,7 +58,7 @@ func Test_PHE(t *testing.T) {
 	assert.Equal(t, key, keyDec)
 
 	//rotation
-	token, newPrivate, err := Rotate(serverKey)
+	token, newPrivate, err := Rotate(serverKeypair)
 	assert.NoError(t, err)
 	err = c.Rotate(token)
 	assert.NoError(t, err)
@@ -84,15 +84,15 @@ func Test_PHE(t *testing.T) {
 }
 
 func Test_PHE_InvalidPassword(t *testing.T) {
-	serverKey, err := GenerateServerKey()
+	serverKeypair, err := GenerateserverKeypair()
 	assert.NoError(t, err)
-	pub, err := GetPublicKey(serverKey)
+	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(t, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
 	assert.NoError(t, err)
 
 	//first, ask server for random values & proof
-	enrollment, err := GetEnrollment(serverKey)
+	enrollment, err := GetEnrollment(serverKeypair)
 	assert.NoError(t, err)
 
 	// Enroll account
@@ -103,7 +103,7 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 	req, err := c.CreateVerifyPasswordRequest([]byte("Password1"), rec)
 	assert.NoError(t, err)
 	//Check password on server
-	res, err := VerifyPassword(serverKey, req)
+	res, err := VerifyPassword(serverKeypair, req)
 	assert.NoError(t, err)
 	//validate response & decrypt M
 	keyDec, err := c.CheckResponseAndDecrypt([]byte("Password1"), rec, res)
@@ -113,24 +113,24 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 }
 
 func BenchmarkServer_GetEnrollment(b *testing.B) {
-	serverKey, err := GenerateServerKey()
+	serverKeypair, err := GenerateserverKeypair()
 	assert.NoError(b, err)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		GetEnrollment(serverKey)
+		GetEnrollment(serverKeypair)
 	}
 }
 
 func BenchmarkClient_EnrollAccount(b *testing.B) {
-	serverKey, err := GenerateServerKey()
+	serverKeypair, err := GenerateserverKeypair()
 	assert.NoError(b, err)
-	pub, err := GetPublicKey(serverKey)
+	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(b, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
 	assert.NoError(b, err)
 
 	//first, ask server for random values & proof
-	enrollment, err := GetEnrollment(serverKey)
+	enrollment, err := GetEnrollment(serverKeypair)
 	assert.NoError(b, err)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -142,15 +142,15 @@ func BenchmarkClient_EnrollAccount(b *testing.B) {
 }
 
 func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
-	serverKey, err := GenerateServerKey()
+	serverKeypair, err := GenerateserverKeypair()
 	assert.NoError(b, err)
-	pub, err := GetPublicKey(serverKey)
+	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(b, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
 	assert.NoError(b, err)
 
 	//first, ask server for random values & proof
-	enrollment, err := GetEnrollment(serverKey)
+	enrollment, err := GetEnrollment(serverKeypair)
 	assert.NoError(b, err)
 
 	// Enroll account
@@ -167,15 +167,15 @@ func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
 }
 
 func BenchmarkLoginFlow(b *testing.B) {
-	serverKey, err := GenerateServerKey()
+	serverKeypair, err := GenerateserverKeypair()
 	assert.NoError(b, err)
-	pub, err := GetPublicKey(serverKey)
+	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(b, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
 	assert.NoError(b, err)
 
 	//first, ask server for random values & proof
-	enrollment, err := GetEnrollment(serverKey)
+	enrollment, err := GetEnrollment(serverKeypair)
 	assert.NoError(b, err)
 
 	// Enroll account
@@ -190,7 +190,7 @@ func BenchmarkLoginFlow(b *testing.B) {
 		req, err := c.CreateVerifyPasswordRequest(pwd, rec)
 		assert.NoError(b, err)
 		//Check password on server
-		res, err := VerifyPassword(serverKey, req)
+		res, err := VerifyPassword(serverKeypair, req)
 		assert.NoError(b, err)
 		//validate response & decrypt M
 		keyDec, err := c.CheckResponseAndDecrypt(pwd, rec, res)

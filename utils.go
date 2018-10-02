@@ -98,10 +98,10 @@ func marshalKeypair(publicKey, privateKey []byte) ([]byte, error) {
 	return asn1.Marshal(kp)
 }
 
-func unmarshalKeypair(serverKey []byte) (kp *keypair, err error) {
+func unmarshalKeypair(serverKeypair []byte) (kp *keypair, err error) {
 
 	kp = &keypair{}
-	rest, err := asn1.Unmarshal(serverKey, kp)
+	rest, err := asn1.Unmarshal(serverKeypair, kp)
 
 	if len(rest) != 0 || err != nil {
 		return nil, errors.New("invalid keypair")
