@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GenerateserverKeypair creates a new random Nist p-256 keypair
-func GenerateserverKeypair() ([]byte, error) {
+// GenerateServerKeypair creates a new random Nist p-256 keypair
+func GenerateServerKeypair() ([]byte, error) {
 	privateKey := randomZ().Bytes()
 	publicKey := new(Point).ScalarBaseMult(privateKey)
 

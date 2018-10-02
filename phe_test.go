@@ -27,7 +27,7 @@ func BenchmarkAddP256(b *testing.B) {
 }
 
 func Test_PHE(t *testing.T) {
-	serverKeypair, err := GenerateserverKeypair()
+	serverKeypair, err := GenerateServerKeypair()
 	assert.NoError(t, err)
 	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(t, err)
@@ -84,7 +84,7 @@ func Test_PHE(t *testing.T) {
 }
 
 func Test_PHE_InvalidPassword(t *testing.T) {
-	serverKeypair, err := GenerateserverKeypair()
+	serverKeypair, err := GenerateServerKeypair()
 	assert.NoError(t, err)
 	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(t, err)
@@ -113,7 +113,7 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 }
 
 func BenchmarkServer_GetEnrollment(b *testing.B) {
-	serverKeypair, err := GenerateserverKeypair()
+	serverKeypair, err := GenerateServerKeypair()
 	assert.NoError(b, err)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -122,7 +122,7 @@ func BenchmarkServer_GetEnrollment(b *testing.B) {
 }
 
 func BenchmarkClient_EnrollAccount(b *testing.B) {
-	serverKeypair, err := GenerateserverKeypair()
+	serverKeypair, err := GenerateServerKeypair()
 	assert.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(b, err)
@@ -142,7 +142,7 @@ func BenchmarkClient_EnrollAccount(b *testing.B) {
 }
 
 func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
-	serverKeypair, err := GenerateserverKeypair()
+	serverKeypair, err := GenerateServerKeypair()
 	assert.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(b, err)
@@ -167,7 +167,7 @@ func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
 }
 
 func BenchmarkLoginFlow(b *testing.B) {
-	serverKeypair, err := GenerateserverKeypair()
+	serverKeypair, err := GenerateServerKeypair()
 	assert.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
 	assert.NoError(b, err)
