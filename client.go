@@ -17,6 +17,11 @@ type Client struct {
 	serverPublicKeyBytes  []byte
 }
 
+// GenerateClientKey creates a new random key used on the Client side
+func GenerateClientKey() []byte {
+	return randomZ().Bytes()
+}
+
 //NewClient creates new client instance using client's private key and server's public key used for verification
 func NewClient(privateKey []byte, serverPublicKey []byte) (*Client, error) {
 	if len(privateKey) == 0 {
@@ -42,6 +47,28 @@ func NewClient(privateKey []byte, serverPublicKey []byte) (*Client, error) {
 // is then supposed to be stored in a database
 // it also generates a random encryption key which can be used to protect user's data
 func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *EnrollmentRecord, key []byte, err error) {
+
+	if resp == nil {
+		err = errors.New("invalid proof")
+		return
+	}
+
+	c0, err := PointUnmarshal(resp.C0)
+	if err != nil {
+		return
+	}
+
+	c1, err := PointUnmarshal(resp.C1)
+	if err != nil {
+		return
+	}
+
+	proofValid := c.validateProofOfSuccess(resp.Proof, resp.NS, c0, c1, resp.C0, resp.C1)
+	if !proofValid {
+		err = errors.New("invalid proof")
+		return
+	}
+
 	nc := make([]byte, 32)
 	_, err = rand.Read(nc)
 	if err != nil {
@@ -62,22 +89,6 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 	hc0 := hashToPoint(nc, password, dhc0)
 	hc1 := hashToPoint(nc, password, dhc1)
 
-	c0, err := PointUnmarshal(resp.C0)
-	if err != nil {
-		return
-	}
-
-	proofValid := c.validateProofOfSuccess(resp.Proof, resp.NS, c0, resp.C1)
-	if !proofValid {
-		err = errors.New("invalid proof")
-		return
-	}
-
-	c1, err := PointUnmarshal(resp.C1)
-	if err != nil {
-		return
-	}
-
 	t0 := c0.Add(hc0.ScalarMultInt(c.clientPrivateKey))
 	t1 := c1.Add(hc1.ScalarMultInt(c.clientPrivateKey)).Add(m.ScalarMultInt(c.clientPrivateKey))
 
@@ -91,7 +102,7 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 	return
 }
 
-func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 *Point, c1b []byte) bool {
+func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 *Point, c1 *Point, c0b, c1b []byte) bool {
 
 	term1, term2, term3, blindX, err := proof.parse()
 
@@ -99,15 +110,10 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 		return false
 	}
 
-	c1, err := PointUnmarshal(c1b)
-	if err != nil {
-		return false
-	}
-
 	hs0 := hashToPoint(nonce, dhs0)
 	hs1 := hashToPoint(nonce, dhs1)
 
-	challenge := hashZ(c.serverPublicKeyBytes, curveG.Marshal(), c0.Marshal(), c1b, proof.Term1, proof.Term2, proof.Term3, proofOk)
+	challenge := hashZ(c.serverPublicKeyBytes, curveG.Marshal(), c0b, c1b, proof.Term1, proof.Term2, proof.Term3, proofOk)
 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
 	// return False
@@ -195,7 +201,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 
 	if resp.Res {
 
-		if !c.validateProofOfSuccess(resp.ProofSuccess, rec.NS, c0, resp.C1) {
+		if !c.validateProofOfSuccess(resp.ProofSuccess, rec.NS, c0, c1, c0.Marshal(), resp.C1) {
 			return nil, errors.New("result is ok but proof is invalid")
 		}
 

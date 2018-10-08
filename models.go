@@ -146,8 +146,9 @@ type EnrollmentResponse struct {
 
 // VerifyPasswordRequest contains server's nonce and an attempt to verify a password in form of an elliptic curve point
 type VerifyPasswordRequest struct {
-	NS []byte `json:"ns"`
-	C0 []byte `json:"c_0"`
+	NS       []byte `json:"ns"`
+	C0       []byte `json:"c_0"`
+	hc0, hc1 *Point
 }
 
 //VerifyPasswordResponse returns the result of evaluating an entered password along with the zero knowledge proof
