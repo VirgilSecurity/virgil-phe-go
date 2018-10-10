@@ -31,7 +31,7 @@ func NewClient(privateKey []byte, serverPublicKey []byte) (*Client, error) {
 	pub, err := PointUnmarshal(serverPublicKey)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "invalid public key")
 	}
 
 	return &Client{
@@ -294,5 +294,29 @@ func (c *Client) Update(rec *EnrollmentRecord, token *UpdateToken) (updRec *Enro
 		NS: rec.NS,
 		NC: rec.NC,
 	}
+	return
+}
+
+// RotateClientKeys returns a new pair of keys given old keys and an update token
+func RotateClientKeys(clientPrivate, serverPublic []byte, token *UpdateToken) (newClientPrivate, newServerPublic []byte, err error) {
+	a, b, err := token.parse()
+	if err != nil {
+		return
+	}
+
+	pub, err := PointUnmarshal(serverPublic)
+
+	if err != nil {
+		return
+	}
+
+	if len(clientPrivate) == 0 {
+		err = errors.New("invalid private key")
+		return
+	}
+
+	newClientPrivate = gf.MulBytes(clientPrivate, a).Bytes()
+	pub = pub.ScalarMultInt(a).Add(new(Point).ScalarBaseMultInt(b))
+	newServerPublic = pub.Marshal()
 	return
 }
