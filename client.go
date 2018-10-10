@@ -269,8 +269,8 @@ func (c *Client) Rotate(token *UpdateToken) error {
 	return nil
 }
 
-// Update needs to be applied to every database record to correspond to new private and public keys
-func (c *Client) Update(rec *EnrollmentRecord, token *UpdateToken) (updRec *EnrollmentRecord, err error) {
+// UpdateRecord needs to be applied to every database record to correspond to new private and public keys
+func UpdateRecord(rec *EnrollmentRecord, token *UpdateToken) (updRec *EnrollmentRecord, err error) {
 
 	a, b, err := token.parse()
 	if err != nil {

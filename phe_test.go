@@ -66,7 +66,7 @@ func Test_PHE(t *testing.T) {
 	newPub, err := GetPublicKey(newPrivate)
 	assert.NoError(t, err)
 	assert.Equal(t, c.serverPublicKeyBytes, newPub)
-	rec1, err := c.Update(rec, token)
+	rec1, err := UpdateRecord(rec, token)
 	assert.NoError(t, err)
 	//Check password request
 	req, err = c.CreateVerifyPasswordRequest(pwd, rec1)
