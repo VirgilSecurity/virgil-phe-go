@@ -4,9 +4,9 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/asn1"
+	"github.com/passw0rd/phe-go/swu"
 	"math/big"
 
-	"github.com/Scratch-net/PHE/swu"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/sha3"
 )

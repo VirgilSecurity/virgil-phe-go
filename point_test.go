@@ -2,9 +2,9 @@ package phe
 
 import (
 	"crypto/rand"
+	"github.com/passw0rd/phe-go/swu"
 	"testing"
 
-	"github.com/Scratch-net/PHE/swu"
 	"github.com/stretchr/testify/assert"
 )
 
