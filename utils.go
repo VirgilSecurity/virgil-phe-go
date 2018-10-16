@@ -52,11 +52,8 @@ func randomZ() (z *big.Int) {
 }
 
 // hashZ maps arrays of bytes to an integer less than curve's N parameter
-func hashZ(data ...[]byte) (z *big.Int) {
-	if len(data) < 2 {
-		panic(data)
-	}
-	xof := sha3.TupleHashXOF256(data[:len(data)-1], data[len(data)-1])
+func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
+	xof := sha3.TupleHashXOF256(data, domain)
 	rz, err := rand.Int(xof, maxZ)
 	if err != nil {
 		panic(err)
@@ -77,14 +74,9 @@ func hashZ(data ...[]byte) (z *big.Int) {
 }
 
 // hashToPoint maps arrays of bytes to a valid curve point
-func hashToPoint(data ...[]byte) *Point {
-
-	if len(data) < 2 {
-		panic(data)
-	}
-
+func hashToPoint(domain []byte, data ...[]byte) *Point {
 	hash := make([]byte, 32)
-	sha3.TupleHash256(data[:len(data)-1], data[len(data)-1], hash)
+	sha3.TupleHash256(data, domain, hash)
 	x, y := swu.HashToPoint(hash)
 	return &Point{x, y}
 }

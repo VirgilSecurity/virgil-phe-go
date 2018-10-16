@@ -69,8 +69,8 @@ func VerifyPassword(serverKeypair []byte, req *VerifyPasswordRequest) (response 
 		return
 	}
 
-	hs0 := hashToPoint(ns, dhs0)
-	hs1 := hashToPoint(ns, dhs1)
+	hs0 := hashToPoint(dhs0, ns)
+	hs1 := hashToPoint(dhs1, ns)
 
 	if hs0.ScalarMult(kp.PrivateKey).Equal(c0) {
 		//password is ok
@@ -102,8 +102,8 @@ func VerifyPassword(serverKeypair []byte, req *VerifyPasswordRequest) (response 
 }
 
 func eval(kp *keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
-	hs0 = hashToPoint(ns, dhs0)
-	hs1 = hashToPoint(ns, dhs1)
+	hs0 = hashToPoint(dhs0, ns)
+	hs1 = hashToPoint(dhs1, ns)
 
 	c0 = hs0.ScalarMult(kp.PrivateKey)
 	c1 = hs1.ScalarMult(kp.PrivateKey)
@@ -119,7 +119,7 @@ func proveSuccess(kp *keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 
 	//challenge = group.hash((self.X, self.G, c0, c1, term1, term2, term3), target_type=ZR)
 
-	challenge := hashZ(kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), proofOk)
+	challenge := hashZ(proofOk, kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal())
 	res := gf.Add(blindX, gf.MulBytes(kp.PrivateKey, challenge))
 
 	return &ProofOfSuccess{
@@ -160,7 +160,7 @@ func proveFailure(kp *keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, e
 	term3 := publicKey.ScalarMult(blindA)
 	term4 := new(Point).ScalarBaseMult(blindB)
 
-	challenge := hashZ(kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal(), proofError)
+	challenge := hashZ(proofError, kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal())
 
 	return c1, &ProofOfFail{
 		Term1:  term1.Marshal(),

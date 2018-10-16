@@ -80,14 +80,14 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 	if err != nil {
 		panic(err)
 	}
-	m := hashToPoint(mBuf, dm)
+	m := hashToPoint(dm, mBuf)
 
 	kdf := hkdf.New(sha512.New512_256, m.Marshal(), nil, []byte("Secret"))
 	key = make([]byte, 32)
 	_, err = kdf.Read(key)
 
-	hc0 := hashToPoint(nc, password, dhc0)
-	hc1 := hashToPoint(nc, password, dhc1)
+	hc0 := hashToPoint(dhc0, nc, password)
+	hc1 := hashToPoint(dhc1, nc, password)
 
 	t0 := c0.Add(hc0.ScalarMultInt(c.clientPrivateKey))
 	t1 := c1.Add(hc1.ScalarMultInt(c.clientPrivateKey)).Add(m.ScalarMultInt(c.clientPrivateKey))
@@ -110,10 +110,10 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 		return false
 	}
 
-	hs0 := hashToPoint(nonce, dhs0)
-	hs1 := hashToPoint(nonce, dhs1)
+	hs0 := hashToPoint(dhs0, nonce)
+	hs1 := hashToPoint(dhs1, nonce)
 
-	challenge := hashZ(c.serverPublicKeyBytes, curveG.Marshal(), c0b, c1b, proof.Term1, proof.Term2, proof.Term3, proofOk)
+	challenge := hashZ(proofOk, c.serverPublicKeyBytes, curveG.Marshal(), c0b, c1b, proof.Term1, proof.Term2, proof.Term3)
 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
 	// return False
@@ -155,7 +155,7 @@ func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRec
 		return nil, errors.New("invalid client record")
 	}
 
-	hc0 := hashToPoint(rec.NC, password, dhc0)
+	hc0 := hashToPoint(dhc0, rec.NC, password)
 	minusY := gf.Neg(c.clientPrivateKey)
 
 	t0, err := PointUnmarshal(rec.T0)
@@ -188,10 +188,10 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 		return nil, err
 	}
 
-	hc0 := hashToPoint(rec.NC, password, dhc0)
-	hc1 := hashToPoint(rec.NC, password, dhc1)
+	hc0 := hashToPoint(dhc0, rec.NC, password)
+	hc1 := hashToPoint(dhc1, rec.NC, password)
 
-	hs0 := hashToPoint(rec.NS, dhs0)
+	hs0 := hashToPoint(dhs0, rec.NS)
 
 	//c0 = t0 * (hc0 ** (-self.y))
 
@@ -228,7 +228,7 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 		return errors.New("invalid public key")
 	}
 
-	challenge := hashZ(c.serverPublicKeyBytes, curveG.Marshal(), c0.Marshal(), resp.C1, resp.ProofFail.Term1, resp.ProofFail.Term2, resp.ProofFail.Term3, resp.ProofFail.Term4, proofError)
+	challenge := hashZ(proofError, c.serverPublicKeyBytes, curveG.Marshal(), c0.Marshal(), resp.C1, resp.ProofFail.Term1, resp.ProofFail.Term2, resp.ProofFail.Term3, resp.ProofFail.Term4)
 	//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
 	//return False
 	//
@@ -282,8 +282,8 @@ func UpdateRecord(rec *EnrollmentRecord, token *UpdateToken) (updRec *Enrollment
 		return nil, err
 	}
 
-	hs0 := hashToPoint(rec.NS, dhs0)
-	hs1 := hashToPoint(rec.NS, dhs1)
+	hs0 := hashToPoint(dhs0, rec.NS)
+	hs1 := hashToPoint(dhs1, rec.NS)
 
 	t00 := t0.ScalarMultInt(a).Add(hs0.ScalarMultInt(b))
 	t11 := t1.ScalarMultInt(a).Add(hs1.ScalarMultInt(b))
