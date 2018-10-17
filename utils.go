@@ -60,7 +60,7 @@ func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
 	}
 
 	for z == nil {
-		// If the scalar is out of range, sample another  number.
+		// If the scalar is out of range, sample another number.
 		if rz.Cmp(curve.Params().N) >= 0 {
 			rz, err = rand.Int(xof, maxZ)
 			if err != nil {

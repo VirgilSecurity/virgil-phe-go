@@ -4,15 +4,16 @@ import (
 	"math/big"
 )
 
+// GF represents galois field over prime
 type GF struct {
 	P *big.Int
 }
 
 var (
-	One   = big.NewInt(1)
-	Two   = big.NewInt(2)
-	Three = big.NewInt(3)
-	Four  = big.NewInt(4)
+	one   = big.NewInt(1)
+	two   = big.NewInt(2)
+	three = big.NewInt(3)
+	four  = big.NewInt(4)
 )
 
 func (g *GF) Neg(a *big.Int) *big.Int {
@@ -24,11 +25,11 @@ func (g *GF) NegBytes(a []byte) *big.Int {
 }
 
 func (g *GF) Square(a *big.Int) *big.Int {
-	return new(big.Int).Exp(a, Two, g.P)
+	return new(big.Int).Exp(a, two, g.P)
 }
 
 func (g *GF) Cube(a *big.Int) *big.Int {
-	return new(big.Int).Exp(a, Three, g.P)
+	return new(big.Int).Exp(a, three, g.P)
 }
 
 func (g *GF) Pow(a, b *big.Int) *big.Int {
