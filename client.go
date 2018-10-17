@@ -105,12 +105,16 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 		return
 	}
 
+	// client nonce and 2 points
 	nc := make([]byte, 32)
 	_, err = rand.Read(nc)
 	if err != nil {
 		panic(err)
 	}
+	hc0 := hashToPoint(dhc0, nc, password)
+	hc1 := hashToPoint(dhc1, nc, password)
 
+	// encryption key in a form of a random point
 	mBuf := make([]byte, 32)
 	_, err = rand.Read(mBuf)
 	if err != nil {
@@ -122,9 +126,7 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 	key = make([]byte, 32)
 	_, err = kdf.Read(key)
 
-	hc0 := hashToPoint(dhc0, nc, password)
-	hc1 := hashToPoint(dhc1, nc, password)
-
+	// calculate two enrollment points
 	t0 := c0.Add(hc0.ScalarMultInt(c.clientPrivateKey))
 	t1 := c1.Add(hc1.ScalarMultInt(c.clientPrivateKey)).Add(m.ScalarMultInt(c.clientPrivateKey))
 
