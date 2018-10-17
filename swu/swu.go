@@ -42,7 +42,7 @@ package swu
 
 import (
 	"crypto/elliptic"
-	"crypto/sha256"
+	"crypto/sha512"
 	"math/big"
 )
 
@@ -67,7 +67,7 @@ func init() {
 
 //DataToPoint hashes data using SHA-256 and maps it to a point on curve
 func DataToPoint(data []byte) (x, y *big.Int) {
-	hash := sha256.Sum256(data)
+	hash := sha512.Sum512_256(data)
 	return HashToPoint(hash[:])
 }
 

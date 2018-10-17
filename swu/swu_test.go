@@ -3,10 +3,10 @@ package swu
 import (
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha512"
 	"math/big"
 	"testing"
 
-	"github.com/minio/sha256-simd"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,7 +54,7 @@ func HashIntoCurvePoint(r []byte) (x, y *big.Int) {
 }
 
 func tryPoint(r []byte) (x, y *big.Int) {
-	hash := sha256.Sum256(r)
+	hash := sha512.Sum512_256(r)
 	x = new(big.Int).SetBytes(hash[:])
 
 	// y² = x³ - 3x + b
