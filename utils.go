@@ -4,11 +4,11 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/asn1"
-	"github.com/passw0rd/phe-go/swu"
 	"math/big"
 
+	"github.com/passw0rd/phe-go/swu"
+
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -53,7 +53,10 @@ func randomZ() (z *big.Int) {
 
 // hashZ maps arrays of bytes to an integer less than curve's N parameter
 func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
-	xof := sha3.TupleHashXOF256(data, domain)
+	xof, err := TupleKDF(data, domain)
+	if err != nil {
+		panic(err)
+	}
 	rz, err := rand.Int(xof, maxZ)
 	if err != nil {
 		panic(err)
@@ -75,8 +78,10 @@ func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
 
 // hashToPoint maps arrays of bytes to a valid curve point
 func hashToPoint(domain []byte, data ...[]byte) *Point {
-	hash := make([]byte, 32)
-	sha3.TupleHash256(data, domain, hash)
+	hash, err := TupleHash(data, domain)
+	if err != nil {
+		panic(err)
+	}
 	x, y := swu.HashToPoint(hash)
 	return &Point{x, y}
 }
