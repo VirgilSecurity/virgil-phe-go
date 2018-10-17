@@ -53,10 +53,7 @@ func randomZ() (z *big.Int) {
 
 // hashZ maps arrays of bytes to an integer less than curve's N parameter
 func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
-	xof, err := TupleKDF(data, domain)
-	if err != nil {
-		panic(err)
-	}
+	xof := TupleKDF(data, domain)
 	rz, err := rand.Int(xof, maxZ)
 	if err != nil {
 		panic(err)
@@ -78,10 +75,7 @@ func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
 
 // hashToPoint maps arrays of bytes to a valid curve point
 func hashToPoint(domain []byte, data ...[]byte) *Point {
-	hash, err := TupleHash(data, domain)
-	if err != nil {
-		panic(err)
-	}
+	hash := TupleHash(data, domain)
 	x, y := swu.HashToPoint(hash)
 	return &Point{x, y}
 }
