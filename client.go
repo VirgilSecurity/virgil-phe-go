@@ -229,8 +229,6 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 	hc0 := hashToPoint(dhc0, rec.NC, password)
 	hc1 := hashToPoint(dhc1, rec.NC, password)
 
-	hs0 := hashToPoint(dhs0, rec.NS)
-
 	//c0 = t0 * (hc0 ** (-self.y))
 
 	minusY := gf.Neg(c.clientPrivateKey)
@@ -243,7 +241,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 			return nil, errors.New("result is ok but proof is invalid")
 		}
 
-		//return ((t1 * (c1 ** (-1))) *    (hc1 ** (-self.y))) ** (self.y ** (-1))
+		//return ((t1 * (c1 ** (-1))) * (hc1 ** (-self.y))) ** (self.y ** (-1))
 
 		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMultInt(minusY))).ScalarMultInt(gf.Inv(c.clientPrivateKey))
 
@@ -255,6 +253,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 
 	}
 
+	hs0 := hashToPoint(dhs0, rec.NS)
 	err = c.validateProofOfFail(resp, c0, c1, hs0, hc0, hc1)
 
 	return nil, err
