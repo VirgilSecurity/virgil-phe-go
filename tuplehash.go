@@ -58,8 +58,12 @@ func TupleHash(tuple [][]byte, domain []byte) []byte {
 
 func writeArray(w io.Writer, sizeBuf *[8]byte, a []byte) {
 	binary.BigEndian.PutUint64(sizeBuf[:], uint64(len(a)))
-	w.Write(sizeBuf[:])
-	w.Write(a)
+	if _, err := w.Write(sizeBuf[:]); err != nil {
+		panic(err)
+	}
+	if _, err := w.Write(a); err != nil {
+		panic(err)
+	}
 }
 
 // TupleKDF creates HKDF instance initialized with TupleHash

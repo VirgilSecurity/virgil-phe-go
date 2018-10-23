@@ -40,6 +40,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/asn1"
+	"io"
 	"math/big"
 
 	"github.com/passw0rd/phe-go/swu"
@@ -51,7 +52,6 @@ var (
 	curve  = elliptic.P256()
 	curveG = new(Point).ScalarBaseMultInt(new(big.Int).SetUint64(1))
 	gf     = swu.GF{P: curve.Params().N}
-	maxZ   = new(big.Int).SetBit(new(big.Int), 256, 1)
 
 	//domains
 	dhc0       = []byte("hc0")
@@ -65,21 +65,11 @@ var (
 
 // randomZ generates big random 256 bit integer which must be less than curve's N parameter
 func randomZ() (z *big.Int) {
-
-	rr := rand.Reader
-	rz, err := rand.Int(rr, maxZ)
-	if err != nil {
-		panic(err)
-	}
-
+	rz := makeZ(rand.Reader)
 	for z == nil {
 		// If the scalar is out of range, sample another random number.
-
 		if rz.Cmp(curve.Params().N) >= 0 {
-			rz, err = rand.Int(rr, maxZ)
-			if err != nil {
-				panic(err)
-			}
+			rz = makeZ(rand.Reader)
 		} else {
 			z = rz
 		}
@@ -90,23 +80,26 @@ func randomZ() (z *big.Int) {
 // hashZ maps arrays of bytes to an integer less than curve's N parameter
 func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
 	xof := TupleKDF(data, domain)
-	rz, err := rand.Int(xof, maxZ)
-	if err != nil {
-		panic(err)
-	}
+	rz := makeZ(xof)
 
 	for z == nil {
-		// If the scalar is out of range, sample another number.
+		// If the scalar is out of range, extract another number.
 		if rz.Cmp(curve.Params().N) >= 0 {
-			rz, err = rand.Int(xof, maxZ)
-			if err != nil {
-				panic(err)
-			}
+			rz = makeZ(xof)
 		} else {
 			z = rz
 		}
 	}
 	return
+}
+
+func makeZ(reader io.Reader) *big.Int {
+	buf := make([]byte, 32)
+	_, err := reader.Read(buf)
+	if err != nil {
+		panic(err)
+	}
+	return new(big.Int).SetBytes(buf)
 }
 
 // hashToPoint maps arrays of bytes to a valid curve point
