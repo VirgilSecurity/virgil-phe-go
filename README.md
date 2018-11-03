@@ -9,6 +9,6 @@ PHE is a new, more secure mechanism that protects user passwords and lessens the
 
 **WhitePaper**: https://www.chaac.tf.fau.de/files/2018/06/main.pdf
 
-Go implementation by **Alexey Ermishkin** [VirgilSecurty.com](https://virgilsecurity.com)
+Go implementation by **Alexey Ermishkin** [VirgilSecurty.com](https://virgilsecurity.com).
 
-This is an early PoC **NOT** for production use.
+
