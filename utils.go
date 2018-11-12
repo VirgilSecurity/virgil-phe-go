@@ -37,11 +37,16 @@
 package phe
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha512"
 	"encoding/asn1"
 	"io"
 	"math/big"
+
+	"golang.org/x/crypto/hkdf"
 
 	"github.com/passw0rd/phe-go/swu"
 
@@ -61,6 +66,7 @@ var (
 	dm         = []byte("m")
 	proofOk    = []byte("ProofOk")
 	proofError = []byte("ProofError")
+	encrypt    = []byte("PheEncrypt")
 )
 
 // randomZ generates big random 256 bit integer which must be less than curve's N parameter
@@ -128,4 +134,76 @@ func unmarshalKeypair(serverKeypair []byte) (kp *keypair, err error) {
 	}
 
 	return
+}
+
+// Encrypt generates 32 byte salt, uses master key & salt to generate per-data key & nonce with the help of HKDF
+// Salt is concatenated to the ciphertext
+func Encrypt(data, key []byte) ([]byte, error) {
+
+	if len(key) != 32 {
+		return nil, errors.New("key must be exactly 32 bytes")
+	}
+
+	salt := make([]byte, 32)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, err
+	}
+
+	kdf := hkdf.New(sha512.New512_256, key, salt, encrypt)
+
+	keyNonce := make([]byte, 32+12)
+	_, err := kdf.Read(keyNonce)
+	if err != nil {
+		return nil, err
+	}
+
+	aesgcm, err := aes.NewCipher(keyNonce[:32])
+	if err != nil {
+		return nil, err
+	}
+
+	aesGcm, err := cipher.NewGCM(aesgcm)
+	if err != nil {
+		return nil, err
+	}
+
+	ct := make([]byte, 32+len(data)+aesGcm.Overhead())
+	copy(ct, salt)
+
+	aesGcm.Seal(ct[:32], keyNonce[32:], data, nil)
+	return ct, nil
+}
+
+// Decrypt extracts 32 byte salt, derives key & nonce and decrypts ciphertext
+func Decrypt(ciphertext, key []byte) ([]byte, error) {
+	if len(key) != 32 {
+		return nil, errors.New("key must be exactly 32 bytes")
+	}
+
+	if len(ciphertext) < (32 + 16) {
+		return nil, errors.New("invalid ciphertext length")
+	}
+
+	salt := ciphertext[:32]
+	kdf := hkdf.New(sha512.New512_256, key, salt, encrypt)
+
+	keyNonce := make([]byte, 32+12)
+	_, err := kdf.Read(keyNonce)
+	if err != nil {
+		return nil, err
+	}
+
+	aesgcm, err := aes.NewCipher(keyNonce[:32])
+	if err != nil {
+		return nil, err
+	}
+
+	aesGcm, err := cipher.NewGCM(aesgcm)
+	if err != nil {
+		return nil, err
+	}
+
+	dst := make([]byte, 0)
+	return aesGcm.Open(dst, keyNonce[32:], ciphertext[32:], nil)
+
 }
