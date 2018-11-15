@@ -37,7 +37,7 @@
 package swu
 
 /*
- Implementation of Shallue-Woestijne-Ulas algorithm in Go
+ Implementation of Simple Shallue-Woestijne-Ulas algorithm in Go
 */
 
 import (
