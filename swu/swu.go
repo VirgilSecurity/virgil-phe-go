@@ -79,7 +79,6 @@ func HashToPoint(hash []byte) (x, y *big.Int) {
 	}
 
 	t := new(big.Int).SetBytes(hash)
-	t.Mod(t, p)
 
 	//alpha = -t^2
 	tt := gf.Square(t)
