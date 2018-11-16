@@ -59,10 +59,10 @@ func init() {
 	a = gf.Neg(three)
 	ba := gf.Div(b, a)
 	mba = gf.Neg(ba)
-	p3 := gf.Sub(p, three)
-	p34 = gf.Div(p3, four)
-	p1 := gf.Add(p, one)
-	p14 = gf.Div(p1, four)
+	p3 := new(big.Int).Sub(p, three)
+	p34 = new(big.Int).Div(p3, four)
+	p1 := new(big.Int).Add(p, one)
+	p14 = new(big.Int).Div(p1, four)
 }
 
 //DataToPoint hashes data using SHA-256 and maps it to a point on curve

@@ -2,12 +2,11 @@ package swu
 
 import (
 	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/sha512"
 	"math/big"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -17,13 +16,13 @@ var (
 )
 
 func TestSWU(t *testing.T) {
-	for i := 0; i < 10000; i++ {
-		b := make([]byte, 32)
-		rand.Read(b)
+	h := sha512.Sum512(buf)
+	for i := 0; i < 15000; i++ {
 
-		x, y := DataToPoint(b)
+		x, y := DataToPoint(h[:])
 
-		assert.True(t, elliptic.P256().IsOnCurve(x, y))
+		require.True(t, elliptic.P256().IsOnCurve(x, y))
+		h = sha512.Sum512(h[:])
 	}
 }
 
