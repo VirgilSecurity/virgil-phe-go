@@ -47,7 +47,7 @@ import (
 //TupleHash hashes a slice of byte arrays, prefixing each one with its length
 func TupleHash(tuple [][]byte, domain []byte) []byte {
 	var sizeBuf [8]byte
-	hash := sha512.New512_256()
+	hash := sha512.New()
 
 	for _, t := range tuple {
 		writeArray(hash, &sizeBuf, t)
@@ -69,6 +69,6 @@ func writeArray(w io.Writer, sizeBuf *[8]byte, a []byte) {
 // TupleKDF creates HKDF instance initialized with TupleHash
 func TupleKDF(tuple [][]byte, domain []byte) io.Reader {
 	key := TupleHash(tuple, domain)
-	return hkdf.New(sha512.New512_256, key, domain, []byte("TupleKDF"))
+	return hkdf.New(sha512.New, key, domain, []byte("TupleKDF"))
 
 }

@@ -111,7 +111,7 @@ func makeZ(reader io.Reader) *big.Int {
 // hashToPoint maps arrays of bytes to a valid curve point
 func hashToPoint(domain []byte, data ...[]byte) *Point {
 	hash := TupleHash(data, domain)
-	x, y := swu.HashToPoint(hash)
+	x, y := swu.HashToPoint(hash[:32])
 	return &Point{x, y}
 }
 
@@ -149,7 +149,7 @@ func Encrypt(data, key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	kdf := hkdf.New(sha512.New512_256, key, salt, encrypt)
+	kdf := hkdf.New(sha512.New, key, salt, encrypt)
 
 	keyNonce := make([]byte, 32+12)
 	_, err := kdf.Read(keyNonce)
@@ -185,7 +185,7 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 	}
 
 	salt := ciphertext[:32]
-	kdf := hkdf.New(sha512.New512_256, key, salt, encrypt)
+	kdf := hkdf.New(sha512.New, key, salt, encrypt)
 
 	keyNonce := make([]byte, 32+12)
 	_, err := kdf.Read(keyNonce)

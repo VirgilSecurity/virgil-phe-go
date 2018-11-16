@@ -67,8 +67,8 @@ func init() {
 
 //DataToPoint hashes data using SHA-256 and maps it to a point on curve
 func DataToPoint(data []byte) (x, y *big.Int) {
-	hash := sha512.Sum512_256(data)
-	return HashToPoint(hash[:])
+	hash := sha512.Sum512(data)
+	return HashToPoint(hash[:32])
 }
 
 //HashToPoint maps 32 byte hash to a point on curve
