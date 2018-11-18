@@ -48,7 +48,7 @@ import (
 
 var (
 	p        = elliptic.P256().Params().P
-	a        *big.Int
+	a        *big.Int // a = -3
 	b        = elliptic.P256().Params().B
 	mba      *big.Int
 	gf       = &GF{p}
@@ -59,8 +59,7 @@ func init() {
 	a = gf.Neg(three)
 	ba := gf.Div(b, a)
 	mba = gf.Neg(ba)
-	p3 := new(big.Int).Sub(p, three)
-	p34 = new(big.Int).Div(p3, four)
+	p34 = new(big.Int).Div(a, four) // a ==(p-3)
 	p1 := new(big.Int).Add(p, one)
 	p14 = new(big.Int).Div(p1, four)
 }
@@ -82,9 +81,7 @@ func HashToPoint(hash []byte) (x, y *big.Int) {
 
 	//alpha = -t^2
 	tt := gf.Square(t)
-
 	alpha := gf.Neg(tt)
-
 	asq := gf.Square(alpha)
 	asqa := gf.Add(asq, alpha)
 	asqa1 := gf.Add(one, gf.Inv(asqa))
@@ -94,7 +91,6 @@ func HashToPoint(hash []byte) (x, y *big.Int) {
 
 	//x3 = alpha * x2
 	x3 := gf.Mul(alpha, x2)
-
 	ax2 := gf.Mul(a, x2)
 	x23 := gf.Cube(x2)
 	x23ax2 := gf.Add(x23, ax2)
@@ -111,7 +107,6 @@ func HashToPoint(hash []byte) (x, y *big.Int) {
 
 	// tmp = h2 ^ ((p - 3) // 4)
 	tmp := gf.Pow(h2, p34)
-
 	tmp2 := gf.Square(tmp)
 	tmp2h2 := gf.Mul(tmp2, h2)
 

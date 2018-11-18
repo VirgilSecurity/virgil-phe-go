@@ -18,9 +18,7 @@ var (
 func TestSWU(t *testing.T) {
 	h := sha512.Sum512(buf)
 	for i := 0; i < 15000; i++ {
-
 		x, y := DataToPoint(h[:])
-
 		require.True(t, elliptic.P256().IsOnCurve(x, y))
 		h = sha512.Sum512(h[:])
 	}
