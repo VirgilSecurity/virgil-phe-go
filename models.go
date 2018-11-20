@@ -53,8 +53,7 @@ type EnrollmentRecord struct {
 func (c *EnrollmentRecord) parse() (t0, t1 *Point, err error) {
 
 	if c == nil ||
-		len(c.NC) == 0 || len(c.NS) == 0 ||
-		len(c.NC) > 32 || len(c.NS) > 32 {
+		len(c.NC) != 32 || len(c.NS) != 32 {
 		err = errors.New("invalid record")
 		return
 	}

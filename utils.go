@@ -85,7 +85,7 @@ func randomZ() (z *big.Int) {
 
 // hashZ maps arrays of bytes to an integer less than curve's N parameter
 func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
-	xof := TupleKDF(data, domain)
+	xof := TupleKDF(domain, data...)
 	rz := makeZ(xof)
 
 	for z == nil {
@@ -110,7 +110,7 @@ func makeZ(reader io.Reader) *big.Int {
 
 // hashToPoint maps arrays of bytes to a valid curve point
 func hashToPoint(domain []byte, data ...[]byte) *Point {
-	hash := TupleHash(data, domain)
+	hash := TupleHash(domain, data...)
 	x, y := swu.HashToPoint(hash[:32])
 	return &Point{x, y}
 }

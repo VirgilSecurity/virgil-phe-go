@@ -38,37 +38,26 @@ package phe
 
 import (
 	"crypto/sha512"
-	"encoding/binary"
 	"io"
 
 	"golang.org/x/crypto/hkdf"
 )
 
-//TupleHash hashes a slice of byte arrays, prefixing each one with its length
-func TupleHash(tuple [][]byte, domain []byte) []byte {
-	var sizeBuf [8]byte
+//TupleHash hashes a slice of byte arrays,
+func TupleHash(domain []byte, tuple ...[]byte) []byte {
 	hash := sha512.New()
-
+	/* #nosec */
+	hash.Write(domain)
 	for _, t := range tuple {
-		writeArray(hash, &sizeBuf, t)
+		/* #nosec */
+		hash.Write(t)
 	}
-	writeArray(hash, &sizeBuf, domain)
 	return hash.Sum(nil)
 }
 
-func writeArray(w io.Writer, sizeBuf *[8]byte, a []byte) {
-	binary.BigEndian.PutUint64(sizeBuf[:], uint64(len(a)))
-	if _, err := w.Write(sizeBuf[:]); err != nil {
-		panic(err)
-	}
-	if _, err := w.Write(a); err != nil {
-		panic(err)
-	}
-}
-
 // TupleKDF creates HKDF instance initialized with TupleHash
-func TupleKDF(tuple [][]byte, domain []byte) io.Reader {
-	key := TupleHash(tuple, domain)
+func TupleKDF(domain []byte, tuple ...[]byte) io.Reader {
+	key := TupleHash(nil, tuple...)
 	return hkdf.New(sha512.New, key, domain, []byte("TupleKDF"))
 
 }
