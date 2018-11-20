@@ -1,0 +1,7 @@
+syntax = "proto3";
+package phe;
+
+message Keypair {
+    bytes publicKey = 1;
+    bytes privateKey = 2;
+}

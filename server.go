@@ -137,7 +137,7 @@ func VerifyPassword(serverKeypair []byte, req *VerifyPasswordRequest) (response 
 	return
 }
 
-func eval(kp *keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
+func eval(kp *Keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
 	hs0 = hashToPoint(dhs0, ns)
 	hs1 = hashToPoint(dhs1, ns)
 
@@ -146,7 +146,7 @@ func eval(kp *keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
 	return
 }
 
-func proveSuccess(kp *keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
+func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 	blindX := randomZ()
 
 	term1 := hs0.ScalarMult(blindX.Bytes())
@@ -167,7 +167,7 @@ func proveSuccess(kp *keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 
 }
 
-func proveFailure(kp *keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, err error) {
+func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, err error) {
 	r := randomZ()
 	minusR := gf.Neg(r)
 	minusRX := gf.MulBytes(kp.PrivateKey, minusR)

@@ -193,8 +193,3 @@ type VerifyPasswordResponse struct {
 	ProofSuccess *ProofOfSuccess `json:"proof_success,omitempty"`
 	ProofFail    *ProofOfFail    `json:"proof_fail,omitempty"`
 }
-
-type keypair struct {
-	PublicKey  []byte
-	PrivateKey []byte
-}

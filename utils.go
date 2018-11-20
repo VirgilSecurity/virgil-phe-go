@@ -42,12 +42,12 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha512"
-	"encoding/asn1"
 	"io"
 	"math/big"
 
 	"golang.org/x/crypto/hkdf"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/passw0rd/phe-go/swu"
 
 	"github.com/pkg/errors"
@@ -116,21 +116,20 @@ func hashToPoint(domain []byte, data ...[]byte) *Point {
 }
 
 func marshalKeypair(publicKey, privateKey []byte) ([]byte, error) {
-	kp := keypair{
+	kp := &Keypair{
 		PublicKey:  publicKey,
 		PrivateKey: privateKey,
 	}
 
-	return asn1.Marshal(kp)
+	return proto.Marshal(kp)
 }
 
-func unmarshalKeypair(serverKeypair []byte) (kp *keypair, err error) {
+func unmarshalKeypair(serverKeypair []byte) (kp *Keypair, err error) {
 
-	kp = &keypair{}
-	rest, err := asn1.Unmarshal(serverKeypair, kp)
-
-	if len(rest) != 0 || err != nil {
-		return nil, errors.New("invalid keypair")
+	kp = &Keypair{}
+	err = proto.Unmarshal(serverKeypair, kp)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid keypair")
 	}
 
 	return
