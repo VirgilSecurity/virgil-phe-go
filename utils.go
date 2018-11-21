@@ -69,6 +69,25 @@ var (
 	encrypt    = []byte("PheEncrypt")
 )
 
+//hash hashes a slice of byte arrays,
+func hash(domain []byte, tuple ...[]byte) []byte {
+	hash := sha512.New()
+	/* #nosec */
+	hash.Write(domain)
+	for _, t := range tuple {
+		/* #nosec */
+		hash.Write(t)
+	}
+	return hash.Sum(nil)
+}
+
+// initKdf creates HKDF instance initialized with hash
+func initKdf(domain []byte, tuple ...[]byte) io.Reader {
+	key := hash(nil, tuple...)
+	return hkdf.New(sha512.New, key, domain, []byte("phe_kdf"))
+
+}
+
 // randomZ generates big random 256 bit integer which must be less than curve's N parameter
 func randomZ() (z *big.Int) {
 	rz := makeZ(rand.Reader)
@@ -85,7 +104,7 @@ func randomZ() (z *big.Int) {
 
 // hashZ maps arrays of bytes to an integer less than curve's N parameter
 func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
-	xof := TupleKDF(domain, data...)
+	xof := initKdf(domain, data...)
 	rz := makeZ(xof)
 
 	for z == nil {
@@ -110,7 +129,7 @@ func makeZ(reader io.Reader) *big.Int {
 
 // hashToPoint maps arrays of bytes to a valid curve point
 func hashToPoint(domain []byte, data ...[]byte) *Point {
-	hash := TupleHash(domain, data...)
+	hash := hash(domain, data...)
 	x, y := swu.HashToPoint(hash[:32])
 	return &Point{x, y}
 }
