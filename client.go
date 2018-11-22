@@ -41,6 +41,8 @@ import (
 	"crypto/sha512"
 	"math/big"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/hkdf"
 )
@@ -82,10 +84,11 @@ func NewClient(privateKey []byte, serverPublicKey []byte) (*Client, error) {
 // EnrollAccount uses fresh Enrollment Response and user's password (or its hash) to create a new Enrollment Record which
 // is then supposed to be stored in a database
 // it also generates a random encryption key which can be used to protect user's data
-func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *EnrollmentRecord, key []byte, err error) {
+func (c *Client) EnrollAccount(password []byte, respBytes []byte) (rec []byte, key []byte, err error) {
 
-	if resp == nil {
-		err = errors.New("invalid proof")
+	resp := &EnrollmentResponse{}
+
+	if err = proto.Unmarshal(respBytes, resp); err != nil {
 		return
 	}
 
@@ -99,7 +102,7 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 		return
 	}
 
-	proofValid := c.validateProofOfSuccess(resp.Proof, resp.NS, c0, c1, resp.C0, resp.C1)
+	proofValid := c.validateProofOfSuccess(resp.Proof, resp.Ns, c0, c1, resp.C0, resp.C1)
 	if !proofValid {
 		err = errors.New("invalid proof")
 		return
@@ -130,12 +133,12 @@ func (c *Client) EnrollAccount(password []byte, resp *EnrollmentResponse) (rec *
 	t0 := c0.Add(hc0.ScalarMultInt(c.clientPrivateKey))
 	t1 := c1.Add(hc1.ScalarMultInt(c.clientPrivateKey)).Add(m.ScalarMultInt(c.clientPrivateKey))
 
-	rec = &EnrollmentRecord{
-		NS: resp.NS,
-		NC: nc,
+	rec, err = proto.Marshal(&EnrollmentRecord{
+		Ns: resp.Ns,
+		Nc: nc,
 		T0: t0.Marshal(),
 		T1: t1.Marshal(),
-	}
+	})
 
 	return
 }
@@ -187,13 +190,19 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 }
 
 //CreateVerifyPasswordRequest creates a request in a form of elliptic curve point which is then need to be validated at the server side
-func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRecord) (req *VerifyPasswordRequest, err error) {
+func (c *Client) CreateVerifyPasswordRequest(password []byte, recBytes []byte) (req []byte, err error) {
 
-	if rec == nil || len(rec.NC) == 0 || len(rec.NS) == 0 || len(rec.T0) == 0 {
+	rec := &EnrollmentRecord{}
+
+	if err = proto.Unmarshal(recBytes, rec); err != nil {
+		return
+	}
+
+	if rec == nil || len(rec.Nc) == 0 || len(rec.Ns) == 0 || len(rec.T0) == 0 {
 		return nil, errors.New("invalid client record")
 	}
 
-	hc0 := hashToPoint(dhc0, rec.NC, password)
+	hc0 := hashToPoint(dhc0, rec.Nc, password)
 	minusY := gf.Neg(c.clientPrivateKey)
 
 	t0, err := PointUnmarshal(rec.T0)
@@ -202,18 +211,24 @@ func (c *Client) CreateVerifyPasswordRequest(password []byte, rec *EnrollmentRec
 	}
 
 	c0 := t0.Add(hc0.ScalarMultInt(minusY))
-	req = &VerifyPasswordRequest{
+	return proto.Marshal(&VerifyPasswordRequest{
 		C0: c0.Marshal(),
-		NS: rec.NS,
-	}
-	return
+		Ns: rec.Ns,
+	})
 }
 
 // CheckResponseAndDecrypt verifies server's answer and extracts data encryption key on success
-func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord, resp *VerifyPasswordResponse) (key []byte, err error) {
+func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respBytes []byte) (key []byte, err error) {
 
-	if resp == nil {
-		return nil, errors.New("invalid response")
+	rec := &EnrollmentRecord{}
+
+	if err = proto.Unmarshal(recBytes, rec); err != nil {
+		return
+	}
+
+	resp := &VerifyPasswordResponse{}
+	if err = proto.Unmarshal(respBytes, resp); err != nil {
+		return
 	}
 
 	t0, t1, err := rec.parse()
@@ -226,8 +241,8 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 		return nil, err
 	}
 
-	hc0 := hashToPoint(dhc0, rec.NC, password)
-	hc1 := hashToPoint(dhc1, rec.NC, password)
+	hc0 := hashToPoint(dhc0, rec.Nc, password)
+	hc1 := hashToPoint(dhc1, rec.Nc, password)
 
 	//c0 = t0 * (hc0 ** (-self.y))
 
@@ -237,7 +252,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 
 	if resp.Res {
 
-		if !c.validateProofOfSuccess(resp.ProofSuccess, rec.NS, c0, c1, c0.Marshal(), resp.C1) {
+		if !c.validateProofOfSuccess(resp.ProofSuccess, rec.Ns, c0, c1, c0.Marshal(), resp.C1) {
 			return nil, errors.New("result is ok but proof is invalid")
 		}
 
@@ -253,7 +268,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, rec *EnrollmentRecord,
 
 	}
 
-	hs0 := hashToPoint(dhs0, rec.NS)
+	hs0 := hashToPoint(dhs0, rec.Ns)
 	err = c.validateProofOfFail(resp, c0, c1, hs0, hc0, hc1)
 
 	return nil, err
@@ -289,7 +304,12 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, 
 }
 
 // Rotate updates client's secret key and server's public key with server's update token
-func (c *Client) Rotate(token *UpdateToken) error {
+func (c *Client) Rotate(tokenBytes []byte) error {
+
+	token := &UpdateToken{}
+	if err := proto.Unmarshal(tokenBytes, token); err != nil {
+		return err
+	}
 
 	a, b, err := token.parse()
 	if err != nil {
@@ -307,8 +327,18 @@ func (c *Client) Rotate(token *UpdateToken) error {
 }
 
 // UpdateRecord needs to be applied to every database record to correspond to new private and public keys
-func UpdateRecord(rec *EnrollmentRecord, token *UpdateToken) (updRec *EnrollmentRecord, err error) {
+func UpdateRecord(recBytes []byte, tokenBytes []byte) (updRec []byte, err error) {
 
+	rec := &EnrollmentRecord{}
+
+	if err = proto.Unmarshal(recBytes, rec); err != nil {
+		return
+	}
+
+	token := &UpdateToken{}
+	if err = proto.Unmarshal(tokenBytes, token); err != nil {
+		return
+	}
 	a, b, err := token.parse()
 	if err != nil {
 		return nil, err
@@ -319,23 +349,28 @@ func UpdateRecord(rec *EnrollmentRecord, token *UpdateToken) (updRec *Enrollment
 		return nil, err
 	}
 
-	hs0 := hashToPoint(dhs0, rec.NS)
-	hs1 := hashToPoint(dhs1, rec.NS)
+	hs0 := hashToPoint(dhs0, rec.Ns)
+	hs1 := hashToPoint(dhs1, rec.Ns)
 
 	t00 := t0.ScalarMultInt(a).Add(hs0.ScalarMultInt(b))
 	t11 := t1.ScalarMultInt(a).Add(hs1.ScalarMultInt(b))
 
-	updRec = &EnrollmentRecord{
+	return proto.Marshal(&EnrollmentRecord{
 		T0: t00.Marshal(),
 		T1: t11.Marshal(),
-		NS: rec.NS,
-		NC: rec.NC,
-	}
-	return
+		Ns: rec.Ns,
+		Nc: rec.Nc,
+	})
 }
 
 // RotateClientKeys returns a new pair of keys given old keys and an update token
-func RotateClientKeys(clientPrivate, serverPublic []byte, token *UpdateToken) (newClientPrivate, newServerPublic []byte, err error) {
+func RotateClientKeys(clientPrivate, serverPublic []byte, tokenBytes []byte) (newClientPrivate, newServerPublic []byte, err error) {
+
+	token := &UpdateToken{}
+	if err = proto.Unmarshal(tokenBytes, token); err != nil {
+		return
+	}
+
 	a, b, err := token.parse()
 	if err != nil {
 		return

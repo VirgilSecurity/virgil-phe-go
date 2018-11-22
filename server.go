@@ -39,6 +39,8 @@ package phe
 import (
 	"crypto/rand"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/pkg/errors"
 )
 
@@ -52,7 +54,7 @@ func GenerateServerKeypair() ([]byte, error) {
 }
 
 // GetEnrollment generates a new random enrollment record and a proof
-func GetEnrollment(serverKeypair []byte) (*EnrollmentResponse, error) {
+func GetEnrollment(serverKeypair []byte) ([]byte, error) {
 
 	kp, err := unmarshalKeypair(serverKeypair)
 	if err != nil {
@@ -66,12 +68,12 @@ func GetEnrollment(serverKeypair []byte) (*EnrollmentResponse, error) {
 	}
 	hs0, hs1, c0, c1 := eval(kp, ns)
 	proof := proveSuccess(kp, hs0, hs1, c0, c1)
-	return &EnrollmentResponse{
-		NS:    ns,
+	return proto.Marshal(&EnrollmentResponse{
+		Ns:    ns,
 		C0:    c0.Marshal(),
 		C1:    c1.Marshal(),
 		Proof: proof,
-	}, nil
+	})
 }
 
 // GetPublicKey returns server public key
@@ -86,19 +88,24 @@ func GetPublicKey(serverKeypair []byte) ([]byte, error) {
 
 // VerifyPassword compares password attempt to the one server would calculate itself using its private key
 // and returns a zero knowledge proof of ether success or failure
-func VerifyPassword(serverKeypair []byte, req *VerifyPasswordRequest) (response *VerifyPasswordResponse, err error) {
+func VerifyPassword(serverKeypair []byte, reqBytes []byte) (response []byte, err error) {
+
+	req := &VerifyPasswordRequest{}
+	if err = proto.Unmarshal(reqBytes, req); err != nil {
+		return
+	}
 
 	kp, err := unmarshalKeypair(serverKeypair)
 	if err != nil {
 		return nil, err
 	}
 
-	if req == nil || len(req.NS) > 32 || len(req.NS) == 0 {
+	if req == nil || len(req.Ns) > 32 || len(req.Ns) == 0 {
 		err = errors.New("Invalid password verify request")
 		return
 	}
 
-	ns := req.NS
+	ns := req.Ns
 
 	c0, err := PointUnmarshal(req.C0)
 	if err != nil {
@@ -113,12 +120,11 @@ func VerifyPassword(serverKeypair []byte, req *VerifyPasswordRequest) (response 
 
 		c1 := hs1.ScalarMult(kp.PrivateKey)
 
-		response = &VerifyPasswordResponse{
+		return proto.Marshal(&VerifyPasswordResponse{
 			Res:          true,
 			C1:           c1.Marshal(),
 			ProofSuccess: proveSuccess(kp, hs0, hs1, c0, c1),
-		}
-		return
+		})
 	}
 
 	//password is invalid
@@ -128,13 +134,11 @@ func VerifyPassword(serverKeypair []byte, req *VerifyPasswordRequest) (response 
 		return
 	}
 
-	response = &VerifyPasswordResponse{
+	return proto.Marshal(&VerifyPasswordResponse{
 		Res:       false,
 		C1:        c1.Marshal(),
 		ProofFail: proof,
-	}
-
-	return
+	})
 }
 
 func eval(kp *Keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
@@ -209,7 +213,7 @@ func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, e
 }
 
 //Rotate updates server's private and public keys and issues an update token for use on client's side
-func Rotate(serverKeypair []byte) (token *UpdateToken, newServerKeypair []byte, err error) {
+func Rotate(serverKeypair []byte) (token []byte, newServerKeypair []byte, err error) {
 
 	kp, err := unmarshalKeypair(serverKeypair)
 	if err != nil {
@@ -224,10 +228,10 @@ func Rotate(serverKeypair []byte) (token *UpdateToken, newServerKeypair []byte, 
 		return
 	}
 
-	token = &UpdateToken{
+	token, err = proto.Marshal(&UpdateToken{
 		A: a.Bytes(),
 		B: b.Bytes(),
-	}
+	})
 
 	return
 }
