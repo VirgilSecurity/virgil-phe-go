@@ -251,13 +251,13 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 	if resp.Res {
 
-		proof, ok := resp.Proof.(*VerifyPasswordResponse_Success)
+		proof := resp.GetSuccess()
 
-		if !ok {
-			return nil, errors.New("result is ok but proof is invalid")
+		if proof == nil {
+			return nil, errors.New("result is ok but proof is empty")
 		}
 
-		if !c.validateProofOfSuccess(proof.Success, rec.Ns, c0, c1, c0.Marshal(), resp.C1) {
+		if !c.validateProofOfSuccess(proof, rec.Ns, c0, c1, c0.Marshal(), resp.C1) {
 			return nil, errors.New("result is ok but proof is invalid")
 		}
 
@@ -281,13 +281,11 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0 *Point) error {
 
-	proofResp, ok := resp.Proof.(*VerifyPasswordResponse_Fail)
+	proof := resp.GetFail()
 
-	if !ok || proofResp.Fail == nil {
+	if proof == nil {
 		return errors.New("result is ok but proof is invalid")
 	}
-
-	proof := proofResp.Fail
 
 	term1, term2, term3, term4, blindA, blindB, err := proof.parse()
 	if err != nil {
