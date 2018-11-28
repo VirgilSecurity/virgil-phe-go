@@ -55,7 +55,7 @@ import (
 
 var (
 	curve  = elliptic.P256()
-	curveG = new(Point).ScalarBaseMultInt(new(big.Int).SetUint64(1))
+	curveG = new(Point).ScalarBaseMultInt(new(big.Int).SetUint64(1)).Marshal()
 	gf     = swu.GF{P: curve.Params().N}
 
 	//domains

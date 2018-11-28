@@ -39,8 +39,7 @@ package phe
 import (
 	"crypto/rand"
 
-	"github.com/gogo/protobuf/proto"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -68,11 +67,12 @@ func GetEnrollment(serverKeypair []byte) ([]byte, error) {
 	}
 	hs0, hs1, c0, c1 := eval(kp, ns)
 	proof := proveSuccess(kp, hs0, hs1, c0, c1)
+
 	return proto.Marshal(&EnrollmentResponse{
 		Ns:    ns,
 		C0:    c0.Marshal(),
 		C1:    c1.Marshal(),
-		Proof: proof,
+		Proof: proof.Success,
 	})
 }
 
@@ -120,11 +120,13 @@ func VerifyPassword(serverKeypair []byte, reqBytes []byte) (response []byte, err
 
 		c1 := hs1.ScalarMult(kp.PrivateKey)
 
-		return proto.Marshal(&VerifyPasswordResponse{
-			Res:          true,
-			C1:           c1.Marshal(),
-			ProofSuccess: proveSuccess(kp, hs0, hs1, c0, c1),
-		})
+		resp := &VerifyPasswordResponse{
+			Res:   true,
+			C1:    c1.Marshal(),
+			Proof: proveSuccess(kp, hs0, hs1, c0, c1),
+		}
+
+		return proto.Marshal(resp)
 	}
 
 	//password is invalid
@@ -135,9 +137,9 @@ func VerifyPassword(serverKeypair []byte, reqBytes []byte) (response []byte, err
 	}
 
 	return proto.Marshal(&VerifyPasswordResponse{
-		Res:       false,
-		C1:        c1.Marshal(),
-		ProofFail: proof,
+		Res:   false,
+		C1:    c1.Marshal(),
+		Proof: proof,
 	})
 }
 
@@ -150,7 +152,7 @@ func eval(kp *Keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
 	return
 }
 
-func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
+func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *VerifyPasswordResponse_Success {
 	blindX := randomZ()
 
 	term1 := hs0.ScalarMult(blindX.Bytes())
@@ -159,19 +161,20 @@ func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *ProofOfSuccess {
 
 	//challenge = group.hash((self.X, self.G, c0, c1, term1, term2, term3), target_type=ZR)
 
-	challenge := hashZ(proofOk, kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal())
+	challenge := hashZ(proofOk, kp.PublicKey, curveG, c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal())
 	res := gf.Add(blindX, gf.MulBytes(kp.PrivateKey, challenge))
 
-	return &ProofOfSuccess{
-		Term1:  term1.Marshal(),
-		Term2:  term2.Marshal(),
-		Term3:  term3.Marshal(),
-		BlindX: res.Bytes(),
+	return &VerifyPasswordResponse_Success{
+		Success: &ProofOfSuccess{
+			Term1:  term1.Marshal(),
+			Term2:  term2.Marshal(),
+			Term3:  term3.Marshal(),
+			BlindX: res.Bytes(),
+		},
 	}
-
 }
 
-func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, err error) {
+func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *VerifyPasswordResponse_Fail, err error) {
 	r := randomZ()
 	minusR := gf.Neg(r)
 	minusRX := gf.MulBytes(kp.PrivateKey, minusR)
@@ -200,15 +203,17 @@ func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *ProofOfFail, e
 	term3 := publicKey.ScalarMult(blindA)
 	term4 := new(Point).ScalarBaseMult(blindB)
 
-	challenge := hashZ(proofError, kp.PublicKey, curveG.Marshal(), c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal())
+	challenge := hashZ(proofError, kp.PublicKey, curveG, c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal())
 
-	return c1, &ProofOfFail{
-		Term1:  term1.Marshal(),
-		Term2:  term2.Marshal(),
-		Term3:  term3.Marshal(),
-		Term4:  term4.Marshal(),
-		BlindA: gf.AddBytes(blindA, gf.Mul(challenge, a)).Bytes(),
-		BlindB: gf.AddBytes(blindB, gf.Mul(challenge, b)).Bytes(),
+	return c1, &VerifyPasswordResponse_Fail{
+		Fail: &ProofOfFail{
+			Term1:  term1.Marshal(),
+			Term2:  term2.Marshal(),
+			Term3:  term3.Marshal(),
+			Term4:  term4.Marshal(),
+			BlindA: gf.AddBytes(blindA, gf.Mul(challenge, a)).Bytes(),
+			BlindB: gf.AddBytes(blindB, gf.Mul(challenge, b)).Bytes(),
+		},
 	}, nil
 }
 

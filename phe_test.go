@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -28,93 +28,93 @@ func BenchmarkAddP256(b *testing.B) {
 
 func Test_PHE(t *testing.T) {
 	serverKeypair, err := GenerateServerKeypair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	pub, err := GetPublicKey(serverKeypair)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKeypair)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Enroll account
 
 	rec, key, err := c.EnrollAccount(pwd, enrollment)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	//Check password request
 	req, err := c.CreateVerifyPasswordRequest(pwd, rec)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	//Check password on server
 	res, err := VerifyPassword(serverKeypair, req)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	//validate response & decrypt M
 	keyDec, err := c.CheckResponseAndDecrypt(pwd, rec, res)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// decrypted m must be the same as original
-	assert.Equal(t, key, keyDec)
+	require.Equal(t, key, keyDec)
 
 	//rotation
 	token, newPrivate, err := Rotate(serverKeypair)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = c.Rotate(token)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	//rotated public key must be the same as on server
 	newPub, err := GetPublicKey(newPrivate)
-	assert.NoError(t, err)
-	assert.Equal(t, c.serverPublicKeyBytes, newPub)
+	require.NoError(t, err)
+	require.Equal(t, c.serverPublicKeyBytes, newPub)
 	rec1, err := UpdateRecord(rec, token)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	//Check password request
 	req, err = c.CreateVerifyPasswordRequest(pwd, rec1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	//Check password on server
 	res, err = VerifyPassword(newPrivate, req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	//validate response & decrypt M
 	keyDec, err = c.CheckResponseAndDecrypt(pwd, rec1, res)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// decrypted m must be the same as original
-	assert.Equal(t, key, keyDec)
+	require.Equal(t, key, keyDec)
 
 }
 
 func Test_PHE_InvalidPassword(t *testing.T) {
 	serverKeypair, err := GenerateServerKeypair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	pub, err := GetPublicKey(serverKeypair)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKeypair)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Enroll account
 	rec, _, err := c.EnrollAccount(pwd, enrollment)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	//Check password request
 	req, err := c.CreateVerifyPasswordRequest([]byte("Password1"), rec)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	//Check password on server
 	res, err := VerifyPassword(serverKeypair, req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	//validate response & decrypt M
 	keyDec, err := c.CheckResponseAndDecrypt([]byte("Password1"), rec, res)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	// decrypted m must be nil
-	assert.Nil(t, keyDec)
+	require.Nil(t, keyDec)
 }
 
 func BenchmarkServer_GetEnrollment(b *testing.B) {
 	serverKeypair, err := GenerateServerKeypair()
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		GetEnrollment(serverKeypair)
@@ -123,40 +123,40 @@ func BenchmarkServer_GetEnrollment(b *testing.B) {
 
 func BenchmarkClient_EnrollAccount(b *testing.B) {
 	serverKeypair, err := GenerateServerKeypair()
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKeypair)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		_, _, err := c.EnrollAccount(pwd, enrollment)
-		assert.NoError(b, err)
+		require.NoError(b, err)
 	}
 }
 
 func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
 	serverKeypair, err := GenerateServerKeypair()
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKeypair)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	// Enroll account
 
 	rec, _, err := c.EnrollAccount(pwd, enrollment)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -168,34 +168,34 @@ func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
 
 func BenchmarkLoginFlow(b *testing.B) {
 	serverKeypair, err := GenerateServerKeypair()
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	c, err := NewClient(randomZ().Bytes(), pub)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	//first, ask server for random values & proof
 	enrollment, err := GetEnrollment(serverKeypair)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	// Enroll account
 
 	rec, key, err := c.EnrollAccount(pwd, enrollment)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		//Check password request
 		req, err := c.CreateVerifyPasswordRequest(pwd, rec)
-		assert.NoError(b, err)
+		require.NoError(b, err)
 		//Check password on server
 		res, err := VerifyPassword(serverKeypair, req)
-		assert.NoError(b, err)
+		require.NoError(b, err)
 		//validate response & decrypt M
 		keyDec, err := c.CheckResponseAndDecrypt(pwd, rec, res)
-		assert.NoError(b, err)
+		require.NoError(b, err)
 		// decrypted m must be the same as original
-		assert.Equal(b, key, keyDec)
+		require.Equal(b, key, keyDec)
 	}
 }

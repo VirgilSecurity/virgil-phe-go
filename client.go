@@ -41,8 +41,7 @@ import (
 	"crypto/sha512"
 	"math/big"
 
-	"github.com/gogo/protobuf/proto"
-
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/hkdf"
 )
@@ -154,7 +153,7 @@ func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 
 	hs0 := hashToPoint(dhs0, nonce)
 	hs1 := hashToPoint(dhs1, nonce)
 
-	challenge := hashZ(proofOk, c.serverPublicKeyBytes, curveG.Marshal(), c0b, c1b, proof.Term1, proof.Term2, proof.Term3)
+	challenge := hashZ(proofOk, c.serverPublicKeyBytes, curveG, c0b, c1b, proof.Term1, proof.Term2, proof.Term3)
 
 	//if term1 * (c0 ** challenge) != hs0 ** blind_x:
 	// return False
@@ -233,7 +232,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 	t0, t1, err := rec.parse()
 	if err != nil {
-		return nil, errors.New("invalid record")
+		return nil, errors.Wrap(err, "invalid record")
 	}
 
 	c1, err := PointUnmarshal(resp.C1)
@@ -252,7 +251,13 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 	if resp.Res {
 
-		if !c.validateProofOfSuccess(resp.ProofSuccess, rec.Ns, c0, c1, c0.Marshal(), resp.C1) {
+		proof, ok := resp.Proof.(*VerifyPasswordResponse_Success)
+
+		if !ok {
+			return nil, errors.New("result is ok but proof is invalid")
+		}
+
+		if !c.validateProofOfSuccess(proof.Success, rec.Ns, c0, c1, c0.Marshal(), resp.C1) {
 			return nil, errors.New("result is ok but proof is invalid")
 		}
 
@@ -269,18 +274,27 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 	}
 
 	hs0 := hashToPoint(dhs0, rec.Ns)
-	err = c.validateProofOfFail(resp, c0, c1, hs0, hc0, hc1)
+	err = c.validateProofOfFail(resp, c0, c1, hs0)
 
 	return nil, err
 }
 
-func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0, hc0, hc1 *Point) error {
-	term1, term2, term3, term4, blindA, blindB, err := resp.ProofFail.parse()
+func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0 *Point) error {
+
+	proofResp, ok := resp.Proof.(*VerifyPasswordResponse_Fail)
+
+	if !ok || proofResp.Fail == nil {
+		return errors.New("result is ok but proof is invalid")
+	}
+
+	proof := proofResp.Fail
+
+	term1, term2, term3, term4, blindA, blindB, err := proof.parse()
 	if err != nil {
 		return errors.New("invalid public key")
 	}
 
-	challenge := hashZ(proofError, c.serverPublicKeyBytes, curveG.Marshal(), c0.Marshal(), resp.C1, resp.ProofFail.Term1, resp.ProofFail.Term2, resp.ProofFail.Term3, resp.ProofFail.Term4)
+	challenge := hashZ(proofError, c.serverPublicKeyBytes, curveG, c0.Marshal(), resp.C1, proof.Term1, proof.Term2, proof.Term3, proof.Term4)
 	//if term1 * term2 * (c1 ** challenge) != (c0 ** blind_a) * (hs0 ** blind_b):
 	//return False
 	//
