@@ -42,99 +42,99 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (c *EnrollmentRecord) parse() (t0, t1 *Point, err error) {
+func (m *EnrollmentRecord) parse() (t0, t1 *Point, err error) {
 
-	if c == nil ||
-		len(c.Nc) != 32 || len(c.Ns) != 32 {
+	if m == nil ||
+		len(m.Nc) != 32 || len(m.Ns) != 32 {
 		err = errors.New("invalid record")
 		return
 	}
 
-	if t0, err = PointUnmarshal(c.T0); err != nil {
+	if t0, err = PointUnmarshal(m.T0); err != nil {
 		return
 	}
 
-	t1, err = PointUnmarshal(c.T1)
+	t1, err = PointUnmarshal(m.T1)
 	return
 }
 
-func (p *ProofOfSuccess) parse() (term1, term2, term3 *Point, blindX *big.Int, err error) {
-	if p == nil {
+func (m *ProofOfSuccess) parse() (term1, term2, term3 *Point, blindX *big.Int, err error) {
+	if m == nil {
 		err = errors.New("invalid proof")
 		return
 	}
 
-	if term1, err = PointUnmarshal(p.Term1); err != nil {
+	if term1, err = PointUnmarshal(m.Term1); err != nil {
 		return
 	}
 
-	if term2, err = PointUnmarshal(p.Term2); err != nil {
+	if term2, err = PointUnmarshal(m.Term2); err != nil {
 		return
 	}
 
-	if term3, err = PointUnmarshal(p.Term3); err != nil {
+	if term3, err = PointUnmarshal(m.Term3); err != nil {
 		return
 	}
 
-	if len(p.BlindX) == 0 || len(p.BlindX) > 32 {
+	if len(m.BlindX) == 0 || len(m.BlindX) > 32 {
 		err = errors.New("invalid proof")
 		return
 	}
-	blindX = new(big.Int).SetBytes(p.BlindX)
-
-	return
-}
-
-func (p *ProofOfFail) parse() (term1, term2, term3, term4 *Point, blindA, blindB *big.Int, err error) {
-	if p == nil {
-		err = errors.New("invalid proof")
-		return
-	}
-
-	if term1, err = PointUnmarshal(p.Term1); err != nil {
-		return
-	}
-
-	if term2, err = PointUnmarshal(p.Term2); err != nil {
-		return
-	}
-
-	if term3, err = PointUnmarshal(p.Term3); err != nil {
-		return
-	}
-
-	if term4, err = PointUnmarshal(p.Term4); err != nil {
-		return
-	}
-
-	if len(p.BlindA) == 0 || len(p.BlindA) > 32 {
-		err = errors.New("invalid proof")
-		return
-	}
-
-	if len(p.BlindB) == 0 || len(p.BlindB) > 32 {
-		err = errors.New("invalid proof")
-		return
-	}
-
-	blindA = new(big.Int).SetBytes(p.BlindA)
-	blindB = new(big.Int).SetBytes(p.BlindB)
+	blindX = new(big.Int).SetBytes(m.BlindX)
 
 	return
 }
 
-func (t *UpdateToken) parse() (a, b *big.Int, err error) {
-	if t == nil {
+func (m *ProofOfFail) parse() (term1, term2, term3, term4 *Point, blindA, blindB *big.Int, err error) {
+	if m == nil {
+		err = errors.New("invalid proof")
+		return
+	}
+
+	if term1, err = PointUnmarshal(m.Term1); err != nil {
+		return
+	}
+
+	if term2, err = PointUnmarshal(m.Term2); err != nil {
+		return
+	}
+
+	if term3, err = PointUnmarshal(m.Term3); err != nil {
+		return
+	}
+
+	if term4, err = PointUnmarshal(m.Term4); err != nil {
+		return
+	}
+
+	if len(m.BlindA) == 0 || len(m.BlindA) > 32 {
+		err = errors.New("invalid proof")
+		return
+	}
+
+	if len(m.BlindB) == 0 || len(m.BlindB) > 32 {
+		err = errors.New("invalid proof")
+		return
+	}
+
+	blindA = new(big.Int).SetBytes(m.BlindA)
+	blindB = new(big.Int).SetBytes(m.BlindB)
+
+	return
+}
+
+func (m *UpdateToken) parse() (a, b *big.Int, err error) {
+	if m == nil {
 		return nil, nil, errors.New("invalid token")
 	}
-	if len(t.A) == 0 || len(t.A) > 32 {
+	if len(m.A) == 0 || len(m.A) > 32 {
 		return nil, nil, errors.New("invalid update token")
 	}
-	if len(t.B) == 0 || len(t.B) > 32 {
+	if len(m.B) == 0 || len(m.B) > 32 {
 		return nil, nil, errors.New("invalid update token")
 	}
 
-	a = new(big.Int).SetBytes(t.A)
-	b = new(big.Int).SetBytes(t.B)
+	a = new(big.Int).SetBytes(m.A)
+	b = new(big.Int).SetBytes(m.B)
 	return
 }
