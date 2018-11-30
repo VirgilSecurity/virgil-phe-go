@@ -122,7 +122,7 @@ func (c *Client) EnrollAccount(password []byte, respBytes []byte) (rec []byte, k
 	if err != nil {
 		panic(err)
 	}
-	m := hashToPoint(dm, mBuf)
+	m := hashToPoint(mBuf)
 
 	kdf := hkdf.New(sha512.New, m.Marshal(), nil, []byte("Secret"))
 	key = make([]byte, 32)
