@@ -63,7 +63,6 @@ var (
 	dhc1       = []byte("hc1")
 	dhs0       = []byte("hs0")
 	dhs1       = []byte("hs1")
-	dm         = []byte("m")
 	proofOk    = []byte("ProofOk")
 	proofError = []byte("ProofError")
 	encrypt    = []byte("PheEncrypt")
