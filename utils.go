@@ -83,7 +83,7 @@ func hash(domain []byte, tuple ...[]byte) []byte {
 // initKdf creates HKDF instance initialized with hash
 func initKdf(domain []byte, tuple ...[]byte) io.Reader {
 	key := hash(nil, tuple...)
-	return hkdf.New(sha512.New, key, domain, []byte("phe_kdf"))
+	return hkdf.New(sha512.New, key, domain, []byte("VIRGIL_PHE_KDF_INFO_Z"))
 
 }
 

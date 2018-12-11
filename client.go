@@ -124,7 +124,7 @@ func (c *Client) EnrollAccount(password []byte, respBytes []byte) (rec []byte, k
 	}
 	m := hashToPoint(mBuf)
 
-	kdf := hkdf.New(sha512.New, m.Marshal(), nil, []byte("Secret"))
+	kdf := hkdf.New(sha512.New, m.Marshal(), nil, []byte("VIRGIL_PHE_KDF_INFO_AK"))
 	key = make([]byte, 32)
 	_, err = kdf.Read(key)
 
@@ -265,7 +265,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMultInt(minusY))).ScalarMultInt(gf.Inv(c.clientPrivateKey))
 
-		kdf := hkdf.New(sha512.New, m.Marshal(), nil, []byte("Secret"))
+		kdf := hkdf.New(sha512.New, m.Marshal(), nil, []byte("VIRGIL_PHE_KDF_INFO_AK"))
 		key = make([]byte, 32)
 		_, err = kdf.Read(key)
 
