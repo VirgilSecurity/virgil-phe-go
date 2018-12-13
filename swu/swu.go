@@ -47,12 +47,13 @@ import (
 )
 
 var (
-	p        = elliptic.P256().Params().P
-	a        *big.Int // a = -3
-	b        = elliptic.P256().Params().B
-	mba      *big.Int
-	gf       = &GF{p}
-	p34, p14 *big.Int
+	p            = elliptic.P256().Params().P
+	a            *big.Int // a = -3
+	b            = elliptic.P256().Params().B
+	mba          *big.Int
+	gf           = &GF{p}
+	p34, p14     *big.Int
+	PointHashLen = 32
 )
 
 func init() {
@@ -67,13 +68,13 @@ func init() {
 //DataToPoint hashes data using SHA-256 and maps it to a point on curve
 func DataToPoint(data []byte) (x, y *big.Int) {
 	hash := sha512.Sum512(data)
-	return HashToPoint(hash[:32])
+	return HashToPoint(hash[:PointHashLen])
 }
 
 //HashToPoint maps 32 byte hash to a point on curve
 func HashToPoint(hash []byte) (x, y *big.Int) {
 
-	if len(hash) != 32 {
+	if len(hash) != PointHashLen {
 		panic("invalid hash length")
 	}
 

@@ -46,7 +46,7 @@ import (
 )
 
 func TestEncrypt(t *testing.T) {
-	key := make([]byte, 32)
+	key := make([]byte, symKeyLen)
 	randRead(key)
 
 	data := make([]byte, 365)
@@ -63,7 +63,7 @@ func TestEncrypt(t *testing.T) {
 }
 
 func TestEncrypt_empty(t *testing.T) {
-	key := make([]byte, 32)
+	key := make([]byte, symKeyLen)
 	randRead(key)
 
 	data := make([]byte, 0)
@@ -80,7 +80,7 @@ func TestEncrypt_empty(t *testing.T) {
 }
 
 func TestEncrypt_badKey(t *testing.T) {
-	key := make([]byte, 32)
+	key := make([]byte, symKeyLen)
 	randRead(key)
 
 	data := make([]byte, 365)
@@ -97,8 +97,8 @@ func TestEncrypt_badKey(t *testing.T) {
 }
 
 func TestDecrypt_badLength(t *testing.T) {
-	ct := make([]byte, 32+15)
-	key := make([]byte, 32)
+	ct := make([]byte, symSaltLen+15)
+	key := make([]byte, symKeyLen)
 	randRead(key)
 	plaintext, err := Decrypt(ct, key)
 

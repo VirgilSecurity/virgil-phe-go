@@ -88,7 +88,7 @@ func HashIntoCurvePoint(r []byte) (x, y *big.Int) {
 
 func tryPoint(r []byte) (x, y *big.Int) {
 	hash := sha512.Sum512(r)
-	x = new(big.Int).SetBytes(hash[:32])
+	x = new(big.Int).SetBytes(hash[:PointHashLen])
 
 	// y² = x³ - 3x + b
 	x3 := new(big.Int).Mul(x, x)

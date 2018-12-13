@@ -40,6 +40,8 @@ import (
 	"crypto/sha512"
 	"math/big"
 
+	"github.com/passw0rd/phe-go/swu"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/hkdf"
@@ -107,18 +109,18 @@ func (c *Client) EnrollAccount(password []byte, respBytes []byte) (rec []byte, k
 	}
 
 	// client nonce and 2 points
-	nc := make([]byte, 32)
+	nc := make([]byte, pheNonceLen)
 	randRead(nc)
 	hc0 := hashToPoint(dhc0, nc, password)
 	hc1 := hashToPoint(dhc1, nc, password)
 
 	// encryption key in a form of a random point
-	mBuf := make([]byte, 32)
+	mBuf := make([]byte, swu.PointHashLen)
 	randRead(mBuf)
 	m := hashToPoint(mBuf)
 
-	kdf := hkdf.New(sha512.New, m.Marshal(), nil, []byte("VIRGIL_PHE_KDF_INFO_AK"))
-	key = make([]byte, 32)
+	kdf := hkdf.New(sha512.New, m.Marshal(), nil, kdfInfoClientKey)
+	key = make([]byte, pheClientKeyLen)
 	_, err = kdf.Read(key)
 
 	// calculate two enrollment points
@@ -258,8 +260,8 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMultInt(minusY))).ScalarMultInt(gf.Inv(c.clientPrivateKey))
 
-		kdf := hkdf.New(sha512.New, m.Marshal(), nil, []byte("VIRGIL_PHE_KDF_INFO_AK"))
-		key = make([]byte, 32)
+		kdf := hkdf.New(sha512.New, m.Marshal(), nil, kdfInfoClientKey)
+		key = make([]byte, pheClientKeyLen)
 		_, err = kdf.Read(key)
 
 		return

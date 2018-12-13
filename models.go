@@ -45,7 +45,7 @@ import (
 func (m *EnrollmentRecord) parse() (t0, t1 *Point, err error) {
 
 	if m == nil ||
-		len(m.Nc) != 32 || len(m.Ns) != 32 {
+		len(m.Nc) != pheNonceLen || len(m.Ns) != pheNonceLen {
 		err = errors.New("invalid record")
 		return
 	}
@@ -76,7 +76,7 @@ func (m *ProofOfSuccess) parse() (term1, term2, term3 *Point, blindX *big.Int, e
 		return
 	}
 
-	if len(m.BlindX) == 0 || len(m.BlindX) > 32 {
+	if len(m.BlindX) == 0 || len(m.BlindX) > zLen {
 		err = errors.New("invalid proof")
 		return
 	}
@@ -107,12 +107,12 @@ func (m *ProofOfFail) parse() (term1, term2, term3, term4 *Point, blindA, blindB
 		return
 	}
 
-	if len(m.BlindA) == 0 || len(m.BlindA) > 32 {
+	if len(m.BlindA) == 0 || len(m.BlindA) > zLen {
 		err = errors.New("invalid proof")
 		return
 	}
 
-	if len(m.BlindB) == 0 || len(m.BlindB) > 32 {
+	if len(m.BlindB) == 0 || len(m.BlindB) > zLen {
 		err = errors.New("invalid proof")
 		return
 	}
@@ -127,10 +127,10 @@ func (m *UpdateToken) parse() (a, b *big.Int, err error) {
 	if m == nil {
 		return nil, nil, errors.New("invalid token")
 	}
-	if len(m.A) == 0 || len(m.A) > 32 {
+	if len(m.A) == 0 || len(m.A) > zLen {
 		return nil, nil, errors.New("invalid update token")
 	}
-	if len(m.B) == 0 || len(m.B) > 32 {
+	if len(m.B) == 0 || len(m.B) > zLen {
 		return nil, nil, errors.New("invalid update token")
 	}
 

@@ -63,7 +63,7 @@ func TestPoint_Add_Neg(t *testing.T) {
 }
 
 func MakePoint() *Point {
-	b := make([]byte, 32)
+	b := make([]byte, swu.PointHashLen)
 	randRead(b)
 	x, y := swu.HashToPoint(b)
 	return &Point{x, y}

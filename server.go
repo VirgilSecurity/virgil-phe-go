@@ -58,7 +58,7 @@ func GetEnrollment(serverKeypair []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	ns := make([]byte, 32)
+	ns := make([]byte, pheNonceLen)
 	randRead(ns)
 	hs0, hs1, c0, c1 := eval(kp, ns)
 	proof := proveSuccess(kp, hs0, hs1, c0, c1)
@@ -95,7 +95,7 @@ func VerifyPassword(serverKeypair []byte, reqBytes []byte) (response []byte, err
 		return nil, err
 	}
 
-	if req == nil || len(req.Ns) > 32 || len(req.Ns) == 0 {
+	if req == nil || len(req.Ns) != pheNonceLen {
 		err = errors.New("Invalid password verify request")
 		return
 	}

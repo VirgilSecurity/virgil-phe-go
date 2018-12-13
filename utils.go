@@ -60,14 +60,25 @@ var (
 	gf         = swu.GF{P: curve.Params().N}
 
 	//domains
-	dhc0       = []byte("hc0")
-	dhc1       = []byte("hc1")
-	dhs0       = []byte("hs0")
-	dhs1       = []byte("hs1")
-	proofOk    = []byte("ProofOk")
-	proofError = []byte("ProofError")
-	encrypt    = []byte("PheEncrypt")
-	kdfInfoZ   = []byte("VIRGIL_PHE_KDF_INFO_Z")
+	dhc0             = []byte("hc0")
+	dhc1             = []byte("hc1")
+	dhs0             = []byte("hs0")
+	dhs1             = []byte("hs1")
+	proofOk          = []byte("ProofOk")
+	proofError       = []byte("ProofError")
+	encrypt          = []byte("PheEncrypt")
+	kdfInfoZ         = []byte("VIRGIL_PHE_KDF_INFO_Z")
+	kdfInfoClientKey = []byte("VIRGIL_PHE_KDF_INFO_AK")
+)
+
+const (
+	pheNonceLen     = 32
+	pheClientKeyLen = 32
+	symKeyLen       = 32
+	symSaltLen      = 32
+	symNonceLen     = 12
+	symTagLen       = 16
+	zLen            = 32
 )
 
 // Read is a helper function that calls Reader.Read using io.ReadFull.
@@ -130,9 +141,9 @@ func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
 }
 
 func makeZ(reader io.Reader) *big.Int {
-	buf := make([]byte, 32)
+	buf := make([]byte, zLen)
 	n, err := reader.Read(buf)
-	if err != nil || n != 32 {
+	if err != nil || n != zLen {
 		panic("random read failed")
 	}
 	return new(big.Int).SetBytes(buf)
@@ -141,7 +152,7 @@ func makeZ(reader io.Reader) *big.Int {
 // hashToPoint maps arrays of bytes to a valid curve point
 func hashToPoint(domain []byte, data ...[]byte) *Point {
 	hash := hash(domain, data...)
-	x, y := swu.HashToPoint(hash[:32])
+	x, y := swu.HashToPoint(hash[:swu.PointHashLen])
 	return &Point{x, y}
 }
 
@@ -169,22 +180,22 @@ func unmarshalKeypair(serverKeypair []byte) (kp *Keypair, err error) {
 // Salt is concatenated to the ciphertext
 func Encrypt(data, key []byte) ([]byte, error) {
 
-	if len(key) != 32 {
+	if len(key) != symKeyLen {
 		return nil, errors.New("key must be exactly 32 bytes")
 	}
 
-	salt := make([]byte, 32)
+	salt := make([]byte, symSaltLen)
 	randRead(salt)
 
 	kdf := hkdf.New(sha512.New, key, salt, encrypt)
 
-	keyNonce := make([]byte, 32+12)
+	keyNonce := make([]byte, symKeyLen+symNonceLen)
 	_, err := kdf.Read(keyNonce)
 	if err != nil {
 		return nil, err
 	}
 
-	aesgcm, err := aes.NewCipher(keyNonce[:32])
+	aesgcm, err := aes.NewCipher(keyNonce[:symKeyLen])
 	if err != nil {
 		return nil, err
 	}
@@ -194,33 +205,33 @@ func Encrypt(data, key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	ct := make([]byte, 32+len(data)+aesGcm.Overhead())
+	ct := make([]byte, symSaltLen+len(data)+aesGcm.Overhead())
 	copy(ct, salt)
 
-	aesGcm.Seal(ct[:32], keyNonce[32:], data, nil)
+	aesGcm.Seal(ct[:symSaltLen], keyNonce[symKeyLen:], data, nil)
 	return ct, nil
 }
 
 // Decrypt extracts 32 byte salt, derives key & nonce and decrypts ciphertext
 func Decrypt(ciphertext, key []byte) ([]byte, error) {
-	if len(key) != 32 {
+	if len(key) != symKeyLen {
 		return nil, errors.New("key must be exactly 32 bytes")
 	}
 
-	if len(ciphertext) < (32 + 16) {
+	if len(ciphertext) < (symSaltLen + symTagLen) {
 		return nil, errors.New("invalid ciphertext length")
 	}
 
-	salt := ciphertext[:32]
+	salt := ciphertext[:symSaltLen]
 	kdf := hkdf.New(sha512.New, key, salt, encrypt)
 
-	keyNonce := make([]byte, 32+12)
+	keyNonce := make([]byte, symKeyLen+symNonceLen)
 	_, err := kdf.Read(keyNonce)
 	if err != nil {
 		return nil, err
 	}
 
-	aesgcm, err := aes.NewCipher(keyNonce[:32])
+	aesgcm, err := aes.NewCipher(keyNonce[:symKeyLen])
 	if err != nil {
 		return nil, err
 	}
@@ -231,6 +242,6 @@ func Decrypt(ciphertext, key []byte) ([]byte, error) {
 	}
 
 	dst := make([]byte, 0)
-	return aesGcm.Open(dst, keyNonce[32:], ciphertext[32:], nil)
+	return aesGcm.Open(dst, keyNonce[symKeyLen:], ciphertext[symSaltLen:], nil)
 
 }
