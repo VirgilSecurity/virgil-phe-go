@@ -164,7 +164,7 @@ func proveSuccess(kp *Keypair, hs0, hs1, c0, c1 *Point) *VerifyPasswordResponse_
 			Term1:  term1.Marshal(),
 			Term2:  term2.Marshal(),
 			Term3:  term3.Marshal(),
-			BlindX: res.Bytes(),
+			BlindX: padZ(res.Bytes()),
 		},
 	}
 }
@@ -199,16 +199,16 @@ func proveFailure(kp *Keypair, c0, hs0 *Point) (c1 *Point, proof *VerifyPassword
 	term4 := new(Point).ScalarBaseMult(blindB)
 
 	challenge := hashZ(proofError, kp.PublicKey, curveG, c0.Marshal(), c1.Marshal(), term1.Marshal(), term2.Marshal(), term3.Marshal(), term4.Marshal())
-
+	pof := &ProofOfFail{
+		Term1:  term1.Marshal(),
+		Term2:  term2.Marshal(),
+		Term3:  term3.Marshal(),
+		Term4:  term4.Marshal(),
+		BlindA: padZ(gf.AddBytes(blindA, gf.Mul(challenge, a)).Bytes()),
+		BlindB: padZ(gf.AddBytes(blindB, gf.Mul(challenge, b)).Bytes()),
+	}
 	return c1, &VerifyPasswordResponse_Fail{
-		Fail: &ProofOfFail{
-			Term1:  term1.Marshal(),
-			Term2:  term2.Marshal(),
-			Term3:  term3.Marshal(),
-			Term4:  term4.Marshal(),
-			BlindA: gf.AddBytes(blindA, gf.Mul(challenge, a)).Bytes(),
-			BlindB: gf.AddBytes(blindB, gf.Mul(challenge, b)).Bytes(),
-		},
+		Fail: pof,
 	}, nil
 }
 
@@ -229,8 +229,8 @@ func Rotate(serverKeypair []byte) (token []byte, newServerKeypair []byte, err er
 	}
 
 	token, err = proto.Marshal(&UpdateToken{
-		A: a.Bytes(),
-		B: b.Bytes(),
+		A: padZ(a.Bytes()),
+		B: padZ(b.Bytes()),
 	})
 
 	return

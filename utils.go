@@ -149,6 +149,17 @@ func makeZ(reader io.Reader) *big.Int {
 	return new(big.Int).SetBytes(buf)
 }
 
+//padZ makes all bytes equal size adding zeroes to the beginning if necessary
+func padZ(z []byte) []byte {
+	if len(z) == zLen {
+		return z
+	}
+
+	newZ := make([]byte, zLen)
+	copy(newZ[zLen-len(z):], z)
+	return newZ
+}
+
 // hashToPoint maps arrays of bytes to a valid curve point
 func hashToPoint(domain []byte, data ...[]byte) *Point {
 	hash := hash(domain, data...)
