@@ -37,8 +37,6 @@
 package phe
 
 import (
-	"crypto/rand"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
@@ -61,10 +59,7 @@ func GetEnrollment(serverKeypair []byte) ([]byte, error) {
 	}
 
 	ns := make([]byte, 32)
-	_, err = rand.Read(ns)
-	if err != nil {
-		return nil, err
-	}
+	randRead(ns)
 	hs0, hs1, c0, c1 := eval(kp, ns)
 	proof := proveSuccess(kp, hs0, hs1, c0, c1)
 

@@ -37,7 +37,6 @@
 package phe
 
 import (
-	"crypto/rand"
 	"crypto/sha512"
 	"math/big"
 
@@ -109,19 +108,13 @@ func (c *Client) EnrollAccount(password []byte, respBytes []byte) (rec []byte, k
 
 	// client nonce and 2 points
 	nc := make([]byte, 32)
-	_, err = rand.Read(nc)
-	if err != nil {
-		panic(err)
-	}
+	randRead(nc)
 	hc0 := hashToPoint(dhc0, nc, password)
 	hc1 := hashToPoint(dhc1, nc, password)
 
 	// encryption key in a form of a random point
 	mBuf := make([]byte, 32)
-	_, err = rand.Read(mBuf)
-	if err != nil {
-		panic(err)
-	}
+	randRead(mBuf)
 	m := hashToPoint(mBuf)
 
 	kdf := hkdf.New(sha512.New, m.Marshal(), nil, []byte("VIRGIL_PHE_KDF_INFO_AK"))
@@ -318,23 +311,21 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0 *
 // Rotate updates client's secret key and server's public key with server's update token
 func (c *Client) Rotate(tokenBytes []byte) error {
 
-	token := &UpdateToken{}
-	if err := proto.Unmarshal(tokenBytes, token); err != nil {
-		return err
-	}
-
-	a, b, err := token.parse()
+	newPriv, newPub, err := RotateClientKeys(c.clientPrivateKeyBytes, c.serverPublicKeyBytes, tokenBytes)
 	if err != nil {
 		return err
 	}
 
-	c.clientPrivateKey = gf.Mul(c.clientPrivateKey, a)
-	c.clientPrivateKeyBytes = c.clientPrivateKey.Bytes()
+	pub, err := PointUnmarshal(newPub)
+	if err != nil {
+		return err
+	}
 
-	pub := c.serverPublicKey.ScalarMultInt(a).Add(new(Point).ScalarBaseMultInt(b))
-
+	c.clientPrivateKeyBytes = newPriv
+	c.clientPrivateKey = new(big.Int).SetBytes(newPriv)
+	c.serverPublicKeyBytes = newPub
 	c.serverPublicKey = pub
-	c.serverPublicKeyBytes = pub.Marshal()
+
 	return nil
 }
 

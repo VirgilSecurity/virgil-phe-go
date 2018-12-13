@@ -54,9 +54,10 @@ import (
 )
 
 var (
-	curve  = elliptic.P256()
-	curveG = new(Point).ScalarBaseMultInt(new(big.Int).SetUint64(1)).Marshal()
-	gf     = swu.GF{P: curve.Params().N}
+	randReader = rand.Reader
+	curve      = elliptic.P256()
+	curveG     = new(Point).ScalarBaseMultInt(new(big.Int).SetUint64(1)).Marshal()
+	gf         = swu.GF{P: curve.Params().N}
 
 	//domains
 	dhc0       = []byte("hc0")
@@ -66,7 +67,17 @@ var (
 	proofOk    = []byte("ProofOk")
 	proofError = []byte("ProofError")
 	encrypt    = []byte("PheEncrypt")
+	kdfInfoZ   = []byte("VIRGIL_PHE_KDF_INFO_Z")
 )
+
+// Read is a helper function that calls Reader.Read using io.ReadFull.
+// On return, n == len(b) if and only if err == nil.
+func randRead(b []byte) {
+	_, err := io.ReadFull(randReader, b)
+	if err != nil {
+		panic(err)
+	}
+}
 
 //hash hashes a slice of byte arrays,
 func hash(domain []byte, tuple ...[]byte) []byte {
@@ -83,17 +94,18 @@ func hash(domain []byte, tuple ...[]byte) []byte {
 // initKdf creates HKDF instance initialized with hash
 func initKdf(domain []byte, tuple ...[]byte) io.Reader {
 	key := hash(nil, tuple...)
-	return hkdf.New(sha512.New, key, domain, []byte("VIRGIL_PHE_KDF_INFO_Z"))
+
+	return hkdf.New(sha512.New, key, domain, kdfInfoZ)
 
 }
 
 // randomZ generates big random 256 bit integer which must be less than curve's N parameter
 func randomZ() (z *big.Int) {
-	rz := makeZ(rand.Reader)
+	rz := makeZ(randReader)
 	for z == nil {
 		// If the scalar is out of range, sample another random number.
 		if rz.Cmp(curve.Params().N) >= 0 {
-			rz = makeZ(rand.Reader)
+			rz = makeZ(randReader)
 		} else {
 			z = rz
 		}
@@ -119,9 +131,9 @@ func hashZ(domain []byte, data ...[]byte) (z *big.Int) {
 
 func makeZ(reader io.Reader) *big.Int {
 	buf := make([]byte, 32)
-	_, err := reader.Read(buf)
-	if err != nil {
-		panic(err)
+	n, err := reader.Read(buf)
+	if err != nil || n != 32 {
+		panic("random read failed")
 	}
 	return new(big.Int).SetBytes(buf)
 }
@@ -162,9 +174,7 @@ func Encrypt(data, key []byte) ([]byte, error) {
 	}
 
 	salt := make([]byte, 32)
-	if _, err := rand.Read(salt); err != nil {
-		return nil, err
-	}
+	randRead(salt)
 
 	kdf := hkdf.New(sha512.New, key, salt, encrypt)
 
