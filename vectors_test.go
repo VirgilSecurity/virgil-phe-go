@@ -57,6 +57,11 @@ var (
 	badPassword           = mustHex("7040737377307264")
 	verifyBadPasswordReq  = mustHex("0a2056833a7a1cdb2ec991ca338cd4a2ed663770400fab2cd798bee9f3ed378796bd1241040b43a6e0831d2ca5f92d0e7fc056a9ad7aff9bfc98096b4ca667521676018aed054e963346cb53a544bb751e5302686be2fc8c18ee18172cbed5dba57767d799")
 	verifyBadPasswordResp = mustHex("1241043836ef177c9e8db90adc161d578c0a1a93224fadd28a3db0dccbcee7e3068fcb517d689b93ef00326db9d7d9df79ec8ff7546c27619fc8b6f4b58013518faddd22d0020a41043623463352502aa3693fca6e814794cd367eb8d083b04d8c1039a736789557e0796440fff74726a1b102e0601eab526eba48c5bc188cf920b54886602ff7fbbf124104d081c0340b088b91db69f50a6ed7c36162eeb94903658169e0d73887886850558a5f82769b7a19ee39d8a18fcd5a547123411e8dfdae9c89796597aa54a6765f1a41043b482c5ceaa0a800c4048db7b8f1c797b2012a0402008afa4cf49af363f6d4b2b4d861d2f6c83895f33f61ab05d5f67579c5d06f9c4789dfb05f02346246a7af224104d373e5a27ff3153e96b01924479bc50cae80f0e55a35ccfdbc92a839ace4005fe7d9b96d5be40d490043ed021b29b7d14bae0d6e07a4707538e64773403665cb2a207b82d53e1e651d38fd82e2429b2ad2fa29e39b7be16da861e5a91f59669d7c1432200016177967123700ca26d131a734a27b8323e39e10ed17807107e4db3e9b9a55")
+	token                 = mustHex("0a2056833a7a1cdb2ec991ca338cd4a2ed663770400fab2cd798bee9f3ed378796bd122040318b727391e8592555d341c325ef2bd2cc20aa4040ec9ad2b851bc15b6fef5")
+	rotatedServerPub      = mustHex("04063a221b6780300094c52889b0f607dd067613298ffa780b4b0a922cbd815c61e986739ca719967b9a1358680e09b36908d052df8cca9c9f111720aefa6d4c14")
+	rotatedServerSk       = mustHex("ffab8a09b41e2e3a90aef406bc4c20392390124a2e1a618a1be0d1ce14beb0ea")
+	rotatedClientSk       = mustHex("e592240506bad4c989d134d792bdcaa7d6020ff1daf9c4ce629cc15697b2c716")
+	updatedRecord         = mustHex("0a2056833a7a1cdb2ec991ca338cd4a2ed663770400fab2cd798bee9f3ed378796bd122056833a7a1cdb2ec991ca338cd4a2ed663770400fab2cd798bee9f3ed378796bd1a4104963e0be850c101cf8545b8cbc674d93e38266671ceea94f818b31a4fcdae8e1bf0cb5282a4cf74fa3b9b0285568e8e7f8c8b6ba60018da900655a299573ad49c22410473c228424ecd5ce60b36c14bc64bf4a6df153b095e3ab65497e371d114417e2abd61d2da3838b9fb527593698510f455d5887041421586f7254d024fff52cf24")
 )
 
 func getServerKeypair() []byte {
@@ -123,4 +128,31 @@ func TestVerifyInvalidPasswordResponse(t *testing.T) {
 	require.Equal(t, resp, verifyBadPasswordResp)
 
 	EndMock()
+}
+
+func TestRotateServerKeys(t *testing.T) {
+	MockRandom()
+	tkn, newKeypair, err := Rotate(getServerKeypair())
+	require.NoError(t, err)
+	kp, err := unmarshalKeypair(newKeypair)
+	require.NoError(t, err)
+	require.Equal(t, token, tkn)
+	require.Equal(t, rotatedServerSk, kp.PrivateKey)
+	require.Equal(t, rotatedServerPub, kp.PublicKey)
+
+	EndMock()
+}
+
+func TestRotateClientKey(t *testing.T) {
+	cli, err := NewClient(clientPrivate, serverPublic)
+	require.NoError(t, err)
+	err = cli.Rotate(token)
+	require.NoError(t, err)
+	require.Equal(t, rotatedClientSk, cli.clientPrivateKeyBytes)
+}
+
+func TestRotateEnrollmentRecord(t *testing.T) {
+	updrec, err := UpdateRecord(enrollmentRecord, token)
+	require.NoError(t, err)
+	require.Equal(t, updatedRecord, updrec)
 }
