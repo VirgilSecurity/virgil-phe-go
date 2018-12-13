@@ -38,7 +38,6 @@ package phe
 
 import (
 	"encoding/hex"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -124,7 +123,6 @@ func TestVerifyInvalidPasswordResponse(t *testing.T) {
 	MockRandom()
 	resp, err := VerifyPassword(getServerKeypair(), verifyBadPasswordReq)
 	require.NoError(t, err)
-	fmt.Println(hex.EncodeToString(resp))
 	require.Equal(t, resp, verifyBadPasswordResp)
 
 	EndMock()
