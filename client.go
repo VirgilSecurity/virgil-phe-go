@@ -392,7 +392,7 @@ func RotateClientKeys(clientPrivate, serverPublic []byte, tokenBytes []byte) (ne
 		return
 	}
 
-	newClientPrivate = gf.MulBytes(clientPrivate, a).Bytes()
+	newClientPrivate = padZ(gf.MulBytes(clientPrivate, a).Bytes())
 	pub = pub.ScalarMultInt(a).Add(new(Point).ScalarBaseMultInt(b))
 	newServerPublic = pub.Marshal()
 	return

@@ -43,7 +43,7 @@ import (
 
 // GenerateServerKeypair creates a new random Nist p-256 keypair
 func GenerateServerKeypair() ([]byte, error) {
-	privateKey := randomZ().Bytes()
+	privateKey := padZ(randomZ().Bytes())
 	publicKey := new(Point).ScalarBaseMult(privateKey)
 
 	return marshalKeypair(publicKey.Marshal(), privateKey)
@@ -220,7 +220,7 @@ func Rotate(serverKeypair []byte) (token []byte, newServerKeypair []byte, err er
 		return
 	}
 	a, b := randomZ(), randomZ()
-	newPrivate := gf.Add(gf.MulBytes(kp.PrivateKey, a), b).Bytes()
+	newPrivate := padZ(gf.Add(gf.MulBytes(kp.PrivateKey, a), b).Bytes())
 	newPublic := new(Point).ScalarBaseMult(newPrivate)
 
 	newServerKeypair, err = marshalKeypair(newPublic.Marshal(), newPrivate)
