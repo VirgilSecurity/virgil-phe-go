@@ -53,6 +53,8 @@ type Client struct {
 	clientPrivateKeyBytes []byte
 	serverPublicKey       *Point
 	serverPublicKeyBytes  []byte
+	negKey                *big.Int
+	invKey                *big.Int
 }
 
 // GenerateClientKey creates a new random key used on the Client side
@@ -72,11 +74,15 @@ func NewClient(privateKey []byte, serverPublicKey []byte) (*Client, error) {
 		return nil, errors.Wrap(err, "invalid public key")
 	}
 
+	sk := new(big.Int).SetBytes(privateKey)
+
 	return &Client{
-		clientPrivateKey:      new(big.Int).SetBytes(privateKey),
+		clientPrivateKey:      sk,
 		serverPublicKey:       pub,
 		clientPrivateKeyBytes: privateKey,
 		serverPublicKeyBytes:  serverPublicKey,
+		negKey:                gf.Neg(sk),
+		invKey:                gf.Inv(sk),
 	}, nil
 
 }
@@ -139,7 +145,7 @@ func (c *Client) EnrollAccount(password []byte, respBytes []byte) (rec []byte, k
 
 func (c *Client) validateProofOfSuccess(proof *ProofOfSuccess, nonce []byte, c0 *Point, c1 *Point, c0b, c1b []byte) bool {
 
-	term1, term2, term3, blindX, err := proof.parse()
+	term1, term2, term3, blindX, err := proof.validate()
 
 	if err != nil {
 		return false
@@ -225,7 +231,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 		return
 	}
 
-	t0, t1, err := rec.parse()
+	t0, t1, err := rec.validate()
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid record")
 	}
@@ -240,7 +246,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 	//c0 = t0 * (hc0 ** (-self.y))
 
-	minusY := gf.Neg(c.clientPrivateKey)
+	minusY := c.negKey
 
 	c0 := t0.Add(hc0.ScalarMultInt(minusY))
 
@@ -258,7 +264,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 		//return ((t1 * (c1 ** (-1))) * (hc1 ** (-self.y))) ** (self.y ** (-1))
 
-		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMultInt(minusY))).ScalarMultInt(gf.Inv(c.clientPrivateKey))
+		m := (t1.Add(c1.Neg()).Add(hc1.ScalarMultInt(minusY))).ScalarMultInt(c.invKey)
 
 		kdf := hkdf.New(sha512.New, m.Marshal(), nil, kdfInfoClientKey)
 		key = make([]byte, pheClientKeyLen)
@@ -282,7 +288,7 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0 *
 		return errors.New("result is ok but proof is invalid")
 	}
 
-	term1, term2, term3, term4, blindA, blindB, err := proof.parse()
+	term1, term2, term3, term4, blindA, blindB, err := proof.validate()
 	if err != nil {
 		return errors.New("invalid public key")
 	}
@@ -327,6 +333,8 @@ func (c *Client) Rotate(tokenBytes []byte) error {
 	c.clientPrivateKey = new(big.Int).SetBytes(newPriv)
 	c.serverPublicKeyBytes = newPub
 	c.serverPublicKey = pub
+	c.negKey = gf.Neg(c.clientPrivateKey)
+	c.invKey = gf.Inv(c.clientPrivateKey)
 
 	return nil
 }
@@ -344,12 +352,12 @@ func UpdateRecord(recBytes []byte, tokenBytes []byte) (updRec []byte, err error)
 	if err = proto.Unmarshal(tokenBytes, token); err != nil {
 		return
 	}
-	a, b, err := token.parse()
+	a, b, err := token.validate()
 	if err != nil {
 		return nil, err
 	}
 
-	t0, t1, err := rec.parse()
+	t0, t1, err := rec.validate()
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +384,7 @@ func RotateClientKeys(clientPrivate, serverPublic []byte, tokenBytes []byte) (ne
 		return
 	}
 
-	a, b, err := token.parse()
+	a, b, err := token.validate()
 	if err != nil {
 		return
 	}

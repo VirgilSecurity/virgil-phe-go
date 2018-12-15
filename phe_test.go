@@ -148,15 +148,18 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 }
 
 func BenchmarkServer_GetEnrollment(b *testing.B) {
+	MockRandom()
 	serverKeypair, err := GenerateServerKeypair()
 	require.NoError(b, err)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
+		MockRandom()
 		GetEnrollment(serverKeypair)
 	}
 }
 
 func BenchmarkClient_EnrollAccount(b *testing.B) {
+	MockRandom()
 	serverKeypair, err := GenerateServerKeypair()
 	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
@@ -171,12 +174,14 @@ func BenchmarkClient_EnrollAccount(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
+		MockRandom()
 		_, _, err := c.EnrollAccount(pwd, enrollment)
 		require.NoError(b, err)
 	}
 }
 
 func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
+	MockRandom()
 	serverKeypair, err := GenerateServerKeypair()
 	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
@@ -201,7 +206,45 @@ func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
 	}
 }
 
+func BenchmarkVerifyDecrypt(b *testing.B) {
+	MockRandom()
+	serverKeypair, err := GenerateServerKeypair()
+	require.NoError(b, err)
+	pub, err := GetPublicKey(serverKeypair)
+	require.NoError(b, err)
+	c, err := NewClient(randomZ().Bytes(), pub)
+	require.NoError(b, err)
+
+	//first, ask server for random values & proof
+	enrollment, err := GetEnrollment(serverKeypair)
+	require.NoError(b, err)
+
+	// Enroll account
+
+	rec, key, err := c.EnrollAccount(pwd, enrollment)
+	require.NoError(b, err)
+	//Check password request
+	req, err := c.CreateVerifyPasswordRequest(pwd, rec)
+	require.NoError(b, err)
+	//Check password on server
+	res, err := VerifyPassword(serverKeypair, req)
+	require.NoError(b, err)
+	//validate response & decrypt M
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+
+		keyDec, err := c.CheckResponseAndDecrypt(pwd, rec, res)
+		require.NoError(b, err)
+		// decrypted m must be the same as original
+		require.Equal(b, key, keyDec)
+	}
+	EndMock()
+}
+
 func BenchmarkLoginFlow(b *testing.B) {
+	MockRandom()
 	serverKeypair, err := GenerateServerKeypair()
 	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
@@ -221,6 +264,7 @@ func BenchmarkLoginFlow(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
+		MockRandom()
 		//Check password request
 		req, err := c.CreateVerifyPasswordRequest(pwd, rec)
 		require.NoError(b, err)

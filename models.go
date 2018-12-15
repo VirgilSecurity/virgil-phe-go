@@ -42,7 +42,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (m *EnrollmentRecord) parse() (t0, t1 *Point, err error) {
+func (m *EnrollmentRecord) validate() (t0, t1 *Point, err error) {
 
 	if m == nil ||
 		len(m.Nc) != pheNonceLen || len(m.Ns) != pheNonceLen {
@@ -58,7 +58,7 @@ func (m *EnrollmentRecord) parse() (t0, t1 *Point, err error) {
 	return
 }
 
-func (m *ProofOfSuccess) parse() (term1, term2, term3 *Point, blindX *big.Int, err error) {
+func (m *ProofOfSuccess) validate() (term1, term2, term3 *Point, blindX *big.Int, err error) {
 	if m == nil {
 		err = errors.New("invalid proof")
 		return
@@ -85,7 +85,7 @@ func (m *ProofOfSuccess) parse() (term1, term2, term3 *Point, blindX *big.Int, e
 	return
 }
 
-func (m *ProofOfFail) parse() (term1, term2, term3, term4 *Point, blindA, blindB *big.Int, err error) {
+func (m *ProofOfFail) validate() (term1, term2, term3, term4 *Point, blindA, blindB *big.Int, err error) {
 	if m == nil {
 		err = errors.New("invalid proof")
 		return
@@ -123,7 +123,7 @@ func (m *ProofOfFail) parse() (term1, term2, term3, term4 *Point, blindA, blindB
 	return
 }
 
-func (m *UpdateToken) parse() (a, b *big.Int, err error) {
+func (m *UpdateToken) validate() (a, b *big.Int, err error) {
 	if m == nil {
 		return nil, nil, errors.New("invalid token")
 	}
