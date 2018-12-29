@@ -47,8 +47,12 @@ import (
 
 var (
 	c   = elliptic.P256()
-	buf = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
-	t   = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+	buf = []byte{
+		0x80, 0x39, 0x05, 0x35, 0x49, 0x44, 0x70, 0xbe,
+		0x0b, 0x29, 0x65, 0x01, 0x58, 0x6b, 0xfc, 0xd9,
+		0xe1, 0x31, 0xc3, 0x9e, 0x2d, 0xec, 0xc7, 0x53,
+		0xd4, 0xf2, 0x5f, 0xdd, 0xd2, 0x28, 0x1e, 0xe3}
+	t = make([]byte, 32)
 )
 
 func TestSWU(t *testing.T) {
@@ -68,27 +72,25 @@ func BenchmarkSWU(b *testing.B) {
 }
 
 func BenchmarkTryInc(b *testing.B) {
+	copy(t, buf)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		HashIntoCurvePoint(buf)
+		HashIntoCurvePoint()
+		increment(t)
 	}
 }
 
-func HashIntoCurvePoint(r []byte) (x, y *big.Int) {
-	copy(t, r)
-
+func HashIntoCurvePoint() (x, y *big.Int) {
 	x, y = tryPoint(t)
 	for y == nil || !c.IsOnCurve(x, y) {
 		increment(t)
 		x, y = tryPoint(t)
-
 	}
 	return
 }
 
 func tryPoint(r []byte) (x, y *big.Int) {
-	hash := sha512.Sum512(r)
-	x = new(big.Int).SetBytes(hash[:PointHashLen])
+	x = new(big.Int).SetBytes(r)
 
 	// y² = x³ - 3x + b
 	x3 := new(big.Int).Mul(x, x)

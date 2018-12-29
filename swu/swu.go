@@ -47,12 +47,13 @@ import (
 )
 
 var (
-	p            = elliptic.P256().Params().P
-	a            *big.Int // a = -3
-	b            = elliptic.P256().Params().B
-	mba          *big.Int
-	gf           = &GF{p}
-	p34, p14     *big.Int
+	p        = elliptic.P256().Params().P
+	a        *big.Int // a = -3
+	b        = elliptic.P256().Params().B
+	mba      *big.Int
+	gf       = &GF{p}
+	p34, p14 *big.Int
+	//PointHashLen is the length of a number that represents the point
 	PointHashLen = 32
 )
 
