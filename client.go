@@ -319,7 +319,7 @@ func (c *Client) validateProofOfFail(resp *VerifyPasswordResponse, c0, c1, hs0 *
 // Rotate updates client's secret key and server's public key with server's update token
 func (c *Client) Rotate(tokenBytes []byte) error {
 
-	newPriv, newPub, err := RotateClientKeys(c.clientPrivateKeyBytes, c.serverPublicKeyBytes, tokenBytes)
+	newPriv, newPub, err := RotateClientKeys(c.serverPublicKeyBytes, c.clientPrivateKeyBytes, tokenBytes)
 	if err != nil {
 		return err
 	}
@@ -377,7 +377,7 @@ func UpdateRecord(recBytes []byte, tokenBytes []byte) (updRec []byte, err error)
 }
 
 // RotateClientKeys returns a new pair of keys given old keys and an update token
-func RotateClientKeys(clientPrivate, serverPublic []byte, tokenBytes []byte) (newClientPrivate, newServerPublic []byte, err error) {
+func RotateClientKeys(serverPublic, clientPrivate, tokenBytes []byte) (newClientPrivate, newServerPublic []byte, err error) {
 
 	token := &UpdateToken{}
 	if err = proto.Unmarshal(tokenBytes, token); err != nil {
