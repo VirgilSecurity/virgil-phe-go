@@ -66,7 +66,7 @@ var (
 	dhs1             = []byte("hs1")
 	proofOk          = []byte("ProofOk")
 	proofError       = []byte("ProofError")
-	encrypt          = []byte("PheEncrypt")
+	encrypt          = []byte("VIRGIL_PHE_KDF_CIPHER_INFO")
 	kdfInfoZ         = []byte("VIRGIL_PHE_KDF_INFO_Z")
 	kdfInfoClientKey = []byte("VIRGIL_PHE_KDF_INFO_AK")
 )
