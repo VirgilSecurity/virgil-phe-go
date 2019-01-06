@@ -60,15 +60,16 @@ var (
 	gf         = swu.GF{P: curve.Params().N}
 
 	//domains
-	dhc0             = []byte("hc0")
-	dhc1             = []byte("hc1")
-	dhs0             = []byte("hs0")
-	dhs1             = []byte("hs1")
-	proofOk          = []byte("ProofOk")
-	proofError       = []byte("ProofError")
-	encrypt          = []byte("VIRGIL_PHE_KDF_CIPHER_INFO")
-	kdfInfoZ         = []byte("VIRGIL_PHE_KDF_INFO_Z")
-	kdfInfoClientKey = []byte("VIRGIL_PHE_KDF_INFO_AK")
+	commonPrefix     = []byte{0x56, 0x52, 0x47, 0x4c, 0x50, 0x48, 0x45} //VRGLPHE
+	dhc0             = append(commonPrefix, 0x31)
+	dhc1             = append(commonPrefix, 0x32)
+	dhs0             = append(commonPrefix, 0x33)
+	dhs1             = append(commonPrefix, 0x34)
+	proofOk          = append(commonPrefix, 0x35)
+	proofError       = append(commonPrefix, 0x36)
+	encrypt          = append(commonPrefix, 0x37)
+	kdfInfoZ         = append(commonPrefix, 0x38)
+	kdfInfoClientKey = append(commonPrefix, 0x39)
 )
 
 const (
