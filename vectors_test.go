@@ -38,7 +38,6 @@ package phe
 
 import (
 	"encoding/hex"
-	fmt "fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -112,8 +111,8 @@ func TestVerifyValidPasswordResponse(t *testing.T) {
 	MockRandom()
 	resp, err := VerifyPassword(getServerKeypair(), verifyPasswordReq)
 	require.NoError(t, err)
-	fmt.Println(hex.EncodeToString(resp))
-	//require.Equal(t, verifyPasswordResp, resp)
+	//fmt.Println(hex.EncodeToString(resp))
+	require.Equal(t, verifyPasswordResp, resp)
 	EndMock()
 }
 
@@ -157,13 +156,13 @@ func TestRotateClientKey(t *testing.T) {
 	require.NoError(t, err)
 	err = cli.Rotate(token)
 	require.NoError(t, err)
-	fmt.Println(hex.EncodeToString(cli.clientPrivateKeyBytes))
+	//fmt.Println(hex.EncodeToString(cli.clientPrivateKeyBytes))
 	require.Equal(t, rotatedClientSk, cli.clientPrivateKeyBytes)
 }
 
 func TestRotateEnrollmentRecord(t *testing.T) {
 	updrec, err := UpdateRecord(enrollmentRecord, token)
 	require.NoError(t, err)
-	fmt.Println(hex.EncodeToString(updrec))
+	//fmt.Println(hex.EncodeToString(updrec))
 	require.Equal(t, updatedRecord, updrec)
 }
