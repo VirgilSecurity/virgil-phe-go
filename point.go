@@ -55,7 +55,7 @@ var (
 
 // PointUnmarshal validates & converts byte array to an elliptic curve point object
 func PointUnmarshal(data []byte) (*Point, error) {
-	if len(data) > 65 || len(data) == 0 {
+	if len(data) != 65 {
 		return nil, errors.New("Invalid curve point")
 	}
 	x, y := elliptic.Unmarshal(curve, data)
