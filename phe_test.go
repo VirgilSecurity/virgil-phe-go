@@ -66,7 +66,7 @@ func Test_PHE(t *testing.T) {
 	require.NoError(t, err)
 	pub, err := GetPublicKey(serverKeypair)
 	require.NoError(t, err)
-	c, err := NewClient(randomZ().Bytes(), pub)
+	c, err := NewClient(pub, randomZ().Bytes())
 	require.NoError(t, err)
 
 	//first, ask server for random values & proof
@@ -123,7 +123,7 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 	require.NoError(t, err)
 	pub, err := GetPublicKey(serverKeypair)
 	require.NoError(t, err)
-	c, err := NewClient(randomZ().Bytes(), pub)
+	c, err := NewClient(pub, randomZ().Bytes())
 	require.NoError(t, err)
 
 	//first, ask server for random values & proof
@@ -164,7 +164,7 @@ func BenchmarkClient_EnrollAccount(b *testing.B) {
 	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
 	require.NoError(b, err)
-	c, err := NewClient(randomZ().Bytes(), pub)
+	c, err := NewClient(pub, randomZ().Bytes())
 	require.NoError(b, err)
 
 	//first, ask server for random values & proof
@@ -186,7 +186,7 @@ func BenchmarkClient_CreateVerifyPasswordRequest(b *testing.B) {
 	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
 	require.NoError(b, err)
-	c, err := NewClient(randomZ().Bytes(), pub)
+	c, err := NewClient(pub, randomZ().Bytes())
 	require.NoError(b, err)
 
 	//first, ask server for random values & proof
@@ -212,7 +212,7 @@ func BenchmarkVerifyDecrypt(b *testing.B) {
 	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
 	require.NoError(b, err)
-	c, err := NewClient(randomZ().Bytes(), pub)
+	c, err := NewClient(pub, randomZ().Bytes())
 	require.NoError(b, err)
 
 	//first, ask server for random values & proof
@@ -249,7 +249,7 @@ func BenchmarkLoginFlow(b *testing.B) {
 	require.NoError(b, err)
 	pub, err := GetPublicKey(serverKeypair)
 	require.NoError(b, err)
-	c, err := NewClient(randomZ().Bytes(), pub)
+	c, err := NewClient(pub, randomZ().Bytes())
 	require.NoError(b, err)
 
 	//first, ask server for random values & proof

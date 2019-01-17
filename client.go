@@ -63,7 +63,7 @@ func GenerateClientKey() []byte {
 }
 
 //NewClient creates new client instance using client's private key and server's public key used for verification
-func NewClient(privateKey []byte, serverPublicKey []byte) (*Client, error) {
+func NewClient(serverPublicKey []byte, privateKey []byte) (*Client, error) {
 	if len(privateKey) == 0 {
 		return nil, errors.New("invalid private key")
 	}

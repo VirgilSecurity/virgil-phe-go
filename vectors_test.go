@@ -87,7 +87,7 @@ func TestGetEnrollment(t *testing.T) {
 
 func TestEnroll(t *testing.T) {
 	MockRandom()
-	cli, err := NewClient(clientPrivate, serverPublic)
+	cli, err := NewClient(serverPublic, clientPrivate)
 	require.NoError(t, err)
 	rec, key, err := cli.EnrollAccount(password, enrollmentResponse)
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestEnroll(t *testing.T) {
 }
 
 func TestValidPasswordRequest(t *testing.T) {
-	cli, err := NewClient(clientPrivate, serverPublic)
+	cli, err := NewClient(serverPublic, clientPrivate)
 	require.NoError(t, err)
 	req, err := cli.CreateVerifyPasswordRequest(password, enrollmentRecord)
 	require.NoError(t, err)
@@ -117,7 +117,7 @@ func TestVerifyValidPasswordResponse(t *testing.T) {
 }
 
 func TestInvalidPasswordRequest(t *testing.T) {
-	cli, err := NewClient(clientPrivate, serverPublic)
+	cli, err := NewClient(serverPublic, clientPrivate)
 	require.NoError(t, err)
 	req, err := cli.CreateVerifyPasswordRequest(badPassword, enrollmentRecord)
 	require.NoError(t, err)
@@ -152,7 +152,7 @@ func TestRotateServerKeys(t *testing.T) {
 }
 
 func TestRotateClientKey(t *testing.T) {
-	cli, err := NewClient(clientPrivate, serverPublic)
+	cli, err := NewClient(serverPublic, clientPrivate)
 	require.NoError(t, err)
 	err = cli.Rotate(token)
 	require.NoError(t, err)
