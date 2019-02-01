@@ -138,3 +138,9 @@ func (m *UpdateToken) validate() (a, b *big.Int, err error) {
 	b = new(big.Int).SetBytes(m.B)
 	return
 }
+
+//VerifyPasswordResult contains info about verification process result
+type VerifyPasswordResult struct {
+	Res  bool
+	Salt []byte
+}

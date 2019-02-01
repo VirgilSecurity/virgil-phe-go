@@ -85,6 +85,14 @@ func GetPublicKey(serverKeypair []byte) ([]byte, error) {
 // and returns a zero knowledge proof of ether success or failure
 func VerifyPassword(serverKeypair []byte, reqBytes []byte) (response []byte, err error) {
 
+	response, _, err = VerifyPasswordExtended(serverKeypair, reqBytes)
+	return
+}
+
+// VerifyPasswordExtended compares password attempt to the one server would calculate itself using its private key
+// and returns a zero knowledge proof of ether success or failure
+// and an object containing verify result & salt used for verification
+func VerifyPasswordExtended(serverKeypair []byte, reqBytes []byte) (response []byte, state *VerifyPasswordResult, err error) {
 	req := &VerifyPasswordRequest{}
 	if err = proto.Unmarshal(reqBytes, req); err != nil {
 		return
@@ -92,7 +100,7 @@ func VerifyPassword(serverKeypair []byte, reqBytes []byte) (response []byte, err
 
 	kp, err := unmarshalKeypair(serverKeypair)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if req == nil || len(req.Ns) != pheNonceLen {
@@ -121,7 +129,12 @@ func VerifyPassword(serverKeypair []byte, reqBytes []byte) (response []byte, err
 			Proof: proveSuccess(kp, hs0, hs1, c0, c1),
 		}
 
-		return proto.Marshal(resp)
+		response, err = proto.Marshal(resp)
+		state = &VerifyPasswordResult{
+			Res:  true,
+			Salt: req.Ns,
+		}
+		return
 	}
 
 	//password is invalid
@@ -131,11 +144,16 @@ func VerifyPassword(serverKeypair []byte, reqBytes []byte) (response []byte, err
 		return
 	}
 
-	return proto.Marshal(&VerifyPasswordResponse{
+	response, err = proto.Marshal(&VerifyPasswordResponse{
 		Res:   false,
 		C1:    c1.Marshal(),
 		Proof: proof,
 	})
+	state = &VerifyPasswordResult{
+		Res:  false,
+		Salt: req.Ns,
+	}
+	return
 }
 
 func eval(kp *Keypair, ns []byte) (hs0, hs1, c0, c1 *Point) {
