@@ -82,12 +82,13 @@ func Test_PHE(t *testing.T) {
 	req, err := c.CreateVerifyPasswordRequest(pwd, rec)
 	require.NoError(t, err)
 	//Check password on server
-	res, err := VerifyPassword(serverKeypair, req)
+	resp, result1, err := VerifyPasswordExtended(serverKeypair, req)
 
 	require.NoError(t, err)
+	require.True(t, result1.Res)
 
 	//validate response & decrypt M
-	keyDec, err := c.CheckResponseAndDecrypt(pwd, rec, res)
+	keyDec, err := c.CheckResponseAndDecrypt(pwd, rec, resp)
 	require.NoError(t, err)
 	// decrypted m must be the same as original
 	require.Equal(t, key, keyDec)
@@ -107,11 +108,13 @@ func Test_PHE(t *testing.T) {
 	req, err = c.CreateVerifyPasswordRequest(pwd, rec1)
 	require.NoError(t, err)
 	//Check password on server
-	res, err = VerifyPassword(newPrivate, req)
+	resp, result2, err := VerifyPasswordExtended(newPrivate, req)
 	require.NoError(t, err)
+	require.Equal(t, result1.Salt, result2.Salt)
+	require.True(t, result2.Res)
 
 	//validate response & decrypt M
-	keyDec, err = c.CheckResponseAndDecrypt(pwd, rec1, res)
+	keyDec, err = c.CheckResponseAndDecrypt(pwd, rec1, resp)
 	require.NoError(t, err)
 	// decrypted m must be the same as original
 	require.Equal(t, key, keyDec)
@@ -138,10 +141,11 @@ func Test_PHE_InvalidPassword(t *testing.T) {
 	req, err := c.CreateVerifyPasswordRequest([]byte("Password1"), rec)
 	require.NoError(t, err)
 	//Check password on server
-	res, err := VerifyPassword(serverKeypair, req)
+	resp, result, err := VerifyPasswordExtended(serverKeypair, req)
 	require.NoError(t, err)
+	require.False(t, result.Res)
 	//validate response & decrypt M
-	keyDec, err := c.CheckResponseAndDecrypt([]byte("Password1"), rec, res)
+	keyDec, err := c.CheckResponseAndDecrypt([]byte("Password1"), rec, resp)
 	require.Nil(t, err)
 	// decrypted m must be nil
 	require.Nil(t, keyDec)
