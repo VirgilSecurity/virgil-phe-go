@@ -47,8 +47,8 @@ import (
 
 	"golang.org/x/crypto/hkdf"
 
+	"github.com/VirgilSecurity/virgil-phe-go/swu"
 	"github.com/golang/protobuf/proto"
-	"github.com/passw0rd/phe-go/swu"
 
 	"github.com/pkg/errors"
 )

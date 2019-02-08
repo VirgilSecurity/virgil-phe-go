@@ -42,7 +42,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/passw0rd/phe-go/swu"
+	"github.com/VirgilSecurity/virgil-phe-go/swu"
 
 	"github.com/stretchr/testify/require"
 )

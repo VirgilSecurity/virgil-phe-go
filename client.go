@@ -40,7 +40,7 @@ import (
 	"crypto/sha512"
 	"math/big"
 
-	"github.com/passw0rd/phe-go/swu"
+	"github.com/VirgilSecurity/virgil-phe-go/swu"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
