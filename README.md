@@ -1,6 +1,6 @@
 # Simple Password-Hardened Encryption Services
 
-[![Build Status](https://travis-ci.com/passw0rd/phe-go.png?branch=master)](https://travis-ci.com/passw0rd/phe-go)
+[![Build Status](https://travis-ci.com/VirgilSecurity/virgil-phe-go.png?branch=master)](https://travis-ci.com/VirgilSecurity/virgil-phe-go)
 [![GitHub license](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://github.com/VirgilSecurity/virgil/blob/master/LICENSE)
 
 
