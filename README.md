@@ -14,6 +14,6 @@ PHE is a new, more secure mechanism that protects user passwords and lessens the
 
 **WhitePaper**: https://virgilsecurity.com/wp-content/uploads/2018/11/PHE-Whitepaper-2018.pdf
 
-Go implementation by **Alexey Ermishkin** [VirgilSecurty.com](https://virgilsecurity.com).
+Go implementation by **Alexey Ermishkin** [VirgilSecurity, Inc.](https://virgilsecurity.com).
 
 
