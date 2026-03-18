@@ -39,6 +39,8 @@ package phe
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
+	"io"
 	"math/big"
 	"testing"
 
@@ -321,4 +323,110 @@ func TestHc1(t *testing.T) {
 
 	require.Equal(t, "49501362177553120463897295920682327704465381738906627606535872853621035764254", p.X.String())
 	require.Equal(t, "47270509952559745766619070899406283523267398868407265017727132307696482921539", p.Y.String())
+}
+
+// errReader is an io.Reader that always returns an error.
+type errReader struct{}
+
+func (errReader) Read([]byte) (int, error) {
+	return 0, errors.New("read failed")
+}
+
+func TestEncrypt_InvalidKeyLength(t *testing.T) {
+	_, err := Encrypt([]byte("data"), []byte("short"))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "key must be exactly 32 bytes")
+}
+
+func TestDecrypt_InvalidKeyLength(t *testing.T) {
+	_, err := Decrypt(make([]byte, 100), []byte("short"))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "key must be exactly 32 bytes")
+}
+
+func TestDecrypt_ShortCiphertext(t *testing.T) {
+	key := make([]byte, symKeyLen)
+	_, err := Decrypt(make([]byte, symSaltLen+symTagLen-1), key)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid ciphertext length")
+}
+
+func TestDecrypt_TamperedCiphertext(t *testing.T) {
+	key := make([]byte, symKeyLen)
+	randRead(key)
+	ct, err := Encrypt([]byte("hello"), key)
+	require.NoError(t, err)
+	// Tamper with ciphertext body
+	ct[symSaltLen+1] ^= 0xFF
+	_, err = Decrypt(ct, key)
+	require.Error(t, err)
+}
+
+func TestUnmarshalKeypair_Invalid(t *testing.T) {
+	_, err := unmarshalKeypair([]byte{0xff, 0xff})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid keypair")
+}
+
+func TestMakeZ_Panic(t *testing.T) {
+	require.Panics(t, func() {
+		makeZ(errReader{})
+	})
+}
+
+func TestRandRead_Panic(t *testing.T) {
+	old := randReader
+	defer func() { randReader = old }()
+	randReader = errReader{}
+	require.Panics(t, func() {
+		buf := make([]byte, 32)
+		randRead(buf)
+	})
+}
+
+func TestRandomZ_ReturnsValidScalar(t *testing.T) {
+	z := randomZ()
+	require.NotNil(t, z)
+	require.True(t, z.Cmp(curve.Params().N) < 0)
+}
+
+func TestRandomZ_RetryOnOutOfRange(t *testing.T) {
+	// First 32 bytes: all 0xFF = 2^256-1 > curve.N, triggers retry
+	// Next 32 bytes: 0x01 padded, valid scalar < curve.N
+	outOfRange := bytes.Repeat([]byte{0xFF}, 32)
+	valid := make([]byte, 32)
+	valid[31] = 0x01
+	data := append(outOfRange, valid...)
+
+	old := randReader
+	defer func() { randReader = old }()
+	randReader = bytes.NewReader(data)
+
+	z := randomZ()
+	require.NotNil(t, z)
+	require.True(t, z.Cmp(curve.Params().N) < 0)
+}
+
+func TestHashZ_RetryOnOutOfRange(t *testing.T) {
+	// hashZ uses a KDF, not randReader. We can't easily control its output.
+	// But we can verify it returns valid results with various inputs.
+	// The retry branch is statistically unreachable (~2^-128 probability).
+	z := hashZ(proofOk, curveG, []byte("test"))
+	require.NotNil(t, z)
+	require.True(t, z.Cmp(curve.Params().N) < 0)
+}
+
+// shortReader returns exactly n bytes then EOF, used to test io.ReadFull paths.
+type shortReader struct {
+	data []byte
+	pos  int
+}
+
+func (r *shortReader) Read(p []byte) (int, error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	n := copy(p, r.data[r.pos:])
+	r.pos += n
+	return n, nil
 }

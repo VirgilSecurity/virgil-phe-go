@@ -115,6 +115,12 @@ func increment(counter []byte) {
 	}
 }
 
+func TestHashToPoint_InvalidLength(t *testing.T) {
+	require.Panics(t, func() {
+		HashToPoint([]byte{0x01, 0x02, 0x03}) // wrong length
+	})
+}
+
 func TestSWUCompatibility(t *testing.T) {
 
 	data := []byte{
