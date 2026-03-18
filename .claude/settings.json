@@ -33,7 +33,10 @@
       "Bash(go test:*)",
       "Bash(go tool:*)",
       "Read(//tmp/**)",
-      "Read(//Users/sseroshtan/projects/virgil-phe-all-in-one/virgil-phe-go/**)"
+      "Read(//Users/sseroshtan/projects/virgil-phe-all-in-one/virgil-phe-go/**)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(go doc:*)"
     ],
     "deny": [
       "Bash(rm:*)",
