@@ -45,12 +45,12 @@ import (
 	"io"
 	"math/big"
 
-	"golang.org/x/crypto/hkdf"
+	"errors"
+	"fmt"
 
 	"github.com/VirgilSecurity/virgil-phe-go/swu"
 	"github.com/golang/protobuf/proto"
-
-	"github.com/pkg/errors"
+	"golang.org/x/crypto/hkdf"
 )
 
 var (
@@ -182,7 +182,7 @@ func unmarshalKeypair(serverKeypair []byte) (kp *Keypair, err error) {
 	kp = &Keypair{}
 	err = proto.Unmarshal(serverKeypair, kp)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid keypair")
+		return nil, fmt.Errorf("invalid keypair: %w", err)
 	}
 
 	return

@@ -37,9 +37,8 @@
 package phe
 
 import (
+	"errors"
 	"math/big"
-
-	"github.com/pkg/errors"
 )
 
 func (m *EnrollmentRecord) validate() (t0, t1 *Point, err error) {

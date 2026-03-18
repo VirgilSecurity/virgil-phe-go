@@ -37,8 +37,9 @@
 package phe
 
 import (
+	"errors"
+
 	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
 )
 
 // GenerateServerKeypair creates a new random Nist p-256 keypair

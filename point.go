@@ -38,9 +38,8 @@ package phe
 
 import (
 	"crypto/elliptic"
+	"errors"
 	"math/big"
-
-	"github.com/pkg/errors"
 )
 
 // Point represents an elliptic curve point
