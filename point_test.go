@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Virgil Security Inc.
+ * Copyright (C) 2015-2026 Virgil Security Inc.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@
 package phe
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/VirgilSecurity/virgil-phe-go/swu"
@@ -77,4 +78,28 @@ func TestPointUnmarshal(t *testing.T) {
 	p2, err := PointUnmarshal(data)
 	assert.NoError(t, err)
 	assert.True(t, p2.Equal(p1))
+}
+
+func TestPointUnmarshal_WrongLength(t *testing.T) {
+	_, err := PointUnmarshal([]byte{0x01, 0x02, 0x03})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid curve point")
+}
+
+func TestPointUnmarshal_InvalidPoint(t *testing.T) {
+	// 65 bytes but not a valid curve point (all zeros except prefix)
+	data := make([]byte, 65)
+	data[0] = 0x04
+	data[1] = 0xFF
+	data[32] = 0xFF
+	_, err := PointUnmarshal(data)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid curve point")
+}
+
+func TestPointMarshal_ZeroPoint(t *testing.T) {
+	p := &Point{X: big.NewInt(0), Y: big.NewInt(0)}
+	assert.Panics(t, func() {
+		p.Marshal()
+	})
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Virgil Security Inc.
+ * Copyright (C) 2015-2026 Virgil Security Inc.
  *
  * All rights reserved.
  *
@@ -113,6 +113,12 @@ func increment(counter []byte) {
 			break
 		}
 	}
+}
+
+func TestHashToPoint_InvalidLength(t *testing.T) {
+	require.Panics(t, func() {
+		HashToPoint([]byte{0x01, 0x02, 0x03}) // wrong length
+	})
 }
 
 func TestSWUCompatibility(t *testing.T) {

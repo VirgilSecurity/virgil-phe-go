@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Virgil Security Inc.
+ * Copyright (C) 2015-2026 Virgil Security Inc.
  *
  * All rights reserved.
  *
@@ -37,9 +37,8 @@
 package phe
 
 import (
+	"errors"
 	"math/big"
-
-	"github.com/pkg/errors"
 )
 
 func (m *EnrollmentRecord) validate() (t0, t1 *Point, err error) {

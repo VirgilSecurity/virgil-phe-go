@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Virgil Security Inc.
+ * Copyright (C) 2015-2026 Virgil Security Inc.
  *
  * All rights reserved.
  *
@@ -38,12 +38,12 @@ package phe
 
 import (
 	"crypto/sha512"
+	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/VirgilSecurity/virgil-phe-go/swu"
-
 	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -71,7 +71,7 @@ func NewClient(serverPublicKey []byte, privateKey []byte) (*Client, error) {
 	pub, err := PointUnmarshal(serverPublicKey)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid public key")
+		return nil, fmt.Errorf("invalid public key: %w", err)
 	}
 
 	sk := new(big.Int).SetBytes(privateKey)
@@ -233,7 +233,7 @@ func (c *Client) CheckResponseAndDecrypt(password []byte, recBytes []byte, respB
 
 	t0, t1, err := rec.validate()
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid record")
+		return nil, fmt.Errorf("invalid record: %w", err)
 	}
 
 	c1, err := PointUnmarshal(resp.C1)

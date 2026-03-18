@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "upstream_repo": "serpro69/claude-starter-kit",
+  "template_version": "v0.3.0",
+  "synced_at": "2026-03-18T13:46:39Z",
+  "variables": {
+    "PROJECT_NAME": "virgil-phe-go",
+    "LANGUAGES": "",
+    "CC_MODEL": "default",
+    "SERENA_INITIAL_PROMPT": ""
+  },
+  "sync_exclusions": [
+    ".claude/settings.json",
+    ".serena/project.yml"
+  ]
+}

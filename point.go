@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Virgil Security Inc.
+ * Copyright (C) 2015-2026 Virgil Security Inc.
  *
  * All rights reserved.
  *
@@ -38,9 +38,8 @@ package phe
 
 import (
 	"crypto/elliptic"
+	"errors"
 	"math/big"
-
-	"github.com/pkg/errors"
 )
 
 // Point represents an elliptic curve point

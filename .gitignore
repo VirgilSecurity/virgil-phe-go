@@ -13,3 +13,6 @@
 
 .idea/*
 vendor/*
+
+# Claude
+.claude/settings.json
