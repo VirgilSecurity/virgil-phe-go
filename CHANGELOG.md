@@ -17,3 +17,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Extended test coverage for client, server, models, utils, and SWU packages
+- Synced license headers across all handwritten `.go` files with LICENSE file
